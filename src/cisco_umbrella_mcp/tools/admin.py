@@ -258,7 +258,7 @@ async def umbrella_delete_api_key(params: ApiKeyIdInput, ctx: Context) -> str:
     annotations={
         "title": "Refresh API Key Credentials",
         "readOnlyHint": False,
-        "destructiveHint": False,
+        "destructiveHint": True,
         "idempotentHint": False,
         "openWorldHint": True,
     },
@@ -281,7 +281,7 @@ async def umbrella_refresh_api_key(params: ApiKeyIdInput, ctx: Context) -> str:
     annotations={
         "title": "Rotate S3 Bucket Key",
         "readOnlyHint": False,
-        "destructiveHint": False,
+        "destructiveHint": True,
         "idempotentHint": False,
         "openWorldHint": True,
     },

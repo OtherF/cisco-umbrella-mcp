@@ -6,7 +6,7 @@ import json
 from typing import Optional
 
 from mcp.server.fastmcp import Context
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from cisco_umbrella_mcp.client import UmbrellaClient, format_error
 from cisco_umbrella_mcp.server import AppContext, mcp
@@ -40,6 +40,13 @@ class ActivityInput(BaseModel):
     domains: Optional[str] = Field(default=None, description="Comma-separated domains to filter")
     ip: Optional[str] = Field(default=None, description="IP address to filter")
     verdict: Optional[str] = Field(default=None, description="Filter by verdict: 'allowed' or 'blocked'")
+
+    @field_validator("verdict")
+    @classmethod
+    def validate_verdict(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("allowed", "blocked"):
+            raise ValueError("verdict must be 'allowed' or 'blocked'")
+        return v
 
 
 class TopReportInput(BaseModel):

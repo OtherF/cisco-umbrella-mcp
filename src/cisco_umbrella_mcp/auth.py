@@ -3,6 +3,7 @@
 Handles client credentials flow with automatic token refresh.
 """
 
+import asyncio
 import time
 from dataclasses import dataclass, field
 
@@ -24,6 +25,7 @@ class TokenManager:
     org_id: str | None = None
     _access_token: str | None = field(default=None, init=False, repr=False)
     _expires_at: float = field(default=0.0, init=False, repr=False)
+    _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
 
     @property
     def is_expired(self) -> bool:
@@ -32,8 +34,12 @@ class TokenManager:
     async def get_token(self) -> str:
         """Return a valid access token, refreshing if needed."""
         if self._access_token is None or self.is_expired:
-            await self._refresh_token()
-        assert self._access_token is not None
+            async with self._lock:
+                # Re-check after acquiring lock — another coroutine may have refreshed already
+                if self._access_token is None or self.is_expired:
+                    await self._refresh_token()
+        if self._access_token is None:
+            raise RuntimeError("Token unavailable after refresh — check API_KEY and API_SECRET")
         return self._access_token
 
     async def _refresh_token(self) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Optional
+from urllib.parse import quote
 
 from mcp.server.fastmcp import Context
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -30,7 +31,10 @@ class DomainInput(BaseModel):
     @field_validator("domain")
     @classmethod
     def clean_domain(cls, v: str) -> str:
-        return v.strip().lower().rstrip(".")
+        v = v.strip().lower().rstrip(".")
+        if "/" in v or "\\" in v:
+            raise ValueError("domain must not contain path separators")
+        return v
 
 
 class DomainsInput(BaseModel):
@@ -96,6 +100,13 @@ class PdnsInput(BaseModel):
     record_type: Optional[str] = Field(default=None, description="Filter by record type (A, AAAA, CNAME, etc.)")
     limit: Optional[int] = Field(default=20, ge=1, le=500)
     offset: Optional[int] = Field(default=0, ge=0)
+
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, v: str) -> str:
+        if "/" in v or "\\" in v:
+            raise ValueError("value must be a domain name or IP address, not a URL path")
+        return v
 
 
 class SampleInput(BaseModel):
@@ -346,7 +357,7 @@ async def umbrella_search_domains(params: DomainSearchInput, ctx: Context) -> st
         if params.include_category is not None:
             query["includeCategory"] = params.include_category
         data = await _get_client(ctx).get(
-            SCOPE, f"search/{params.expression}", params=query or None
+            SCOPE, f"search/{quote(params.expression, safe='')}", params=query or None
         )
         return json.dumps(data, indent=2)
     except Exception as e:
@@ -537,7 +548,7 @@ async def umbrella_get_samples(params: SamplesSearchInput, ctx: Context) -> str:
     try:
         data = await _get_client(ctx).get(
             SCOPE,
-            f"samples/{params.destination}",
+            f"samples/{quote(params.destination, safe='')}",
             params={"limit": params.limit, "offset": params.offset},
         )
         return json.dumps(data, indent=2)

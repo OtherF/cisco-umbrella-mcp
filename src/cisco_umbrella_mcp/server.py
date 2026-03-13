@@ -41,10 +41,19 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         )
         sys.exit(1)
 
+    token_url = os.environ.get("TOKEN_URL", "https://api.umbrella.com/auth/v2/token")
+    if not token_url.startswith("https://api.umbrella.com/"):
+        print(
+            f"Error: TOKEN_URL must start with 'https://api.umbrella.com/' (got: {token_url!r}).\n"
+            "This server only communicates with the Cisco Umbrella API.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     token_manager = TokenManager(
         api_key=api_key,
         api_secret=api_secret,
-        token_url=os.environ.get("TOKEN_URL", "https://api.umbrella.com/auth/v2/token"),
+        token_url=token_url,
         org_id=os.environ.get("UMBRELLA_ORG_ID"),
     )
     client = UmbrellaClient(token_manager)
