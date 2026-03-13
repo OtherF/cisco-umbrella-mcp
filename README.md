@@ -4,11 +4,14 @@ An MCP (Model Context Protocol) server that exposes the [Cisco Umbrella](https:/
 
 ## Features
 
-- **Investigate** — Domain/IP threat intelligence, risk scores, WHOIS, passive DNS, malware samples
-- **Policies** — Manage destination lists (allow/block) and application lists
-- **Deployments** — View networks, sites, tunnels, roaming computers, virtual appliances
-- **Reports** — Activity logs, top destinations/threats/identities, security summaries
-- **Admin** — List users, roles, and API keys
+**93 tools across 6 API scopes:**
+
+- **Investigate** — Domain/IP/URL threat intelligence, risk scores, WHOIS, passive DNS, malware samples
+- **Policies** — Manage destination lists (allow/block), application lists, application usage
+- **Deployments** — Networks, sites, tunnels, roaming computers, virtual appliances, tags, SWG device settings
+- **Reports** — Activity logs (DNS, proxy, firewall, intrusion, AMP), top destinations/threats/identities, bandwidth, request time-series, app discovery, API usage
+- **Admin** — Users, roles, full API key lifecycle (create/update/delete/refresh), S3 key rotation
+- **App Discovery** — Cloud application discovery, risk assessment, compliance attributes
 
 ## Prerequisites
 
@@ -61,9 +64,12 @@ Configure your Umbrella API key with the scopes needed for the tools you plan to
 | Investigate | `investigate:read` |
 | Destination Lists | `policies:read` and/or `policies:write` |
 | Application Lists | `policies:read` and/or `policies:write` |
-| Deployments | `deployments:read` |
+| Deployments (read) | `deployments:read` |
+| Deployments (write — tags, SWG settings) | `deployments:write` |
 | Reports | `reports:read` |
-| Admin | `admin:read` |
+| App Discovery | `reports:read` |
+| Admin (read) | `admin:read` |
+| Admin (write — create/update/delete API keys) | `admin:write` |
 
 ## Usage
 
@@ -165,6 +171,7 @@ npx @modelcontextprotocol/inspector cisco-umbrella-mcp
 | `umbrella_create_application_list` | Create an application list |
 | `umbrella_update_application_list` | Update an application list |
 | `umbrella_delete_application_list` | Delete an application list |
+| `umbrella_get_application_usage` | Get usage statistics across all application lists |
 
 ### Deployments
 
@@ -180,9 +187,17 @@ npx @modelcontextprotocol/inspector cisco-umbrella-mcp
 | `umbrella_list_tunnels_state` | Get all tunnel states |
 | `umbrella_list_roaming_computers` | List roaming computers |
 | `umbrella_get_roaming_computer` | Get roaming computer details |
+| `umbrella_get_roaming_org_info` | Get org-level roaming computer properties |
 | `umbrella_list_internal_domains` | List internal domains |
 | `umbrella_list_virtual_appliances` | List virtual appliances |
 | `umbrella_list_policies` | List deployment policies |
+| `umbrella_list_tags` | List roaming computer tags |
+| `umbrella_list_tag_devices` | List devices with a specific tag |
+| `umbrella_add_tag_devices` | Associate devices with a tag |
+| `umbrella_remove_tag_devices` | Remove devices from a tag |
+| `umbrella_set_swg_device_settings` | Enable/disable SWG per device |
+| `umbrella_list_swg_device_settings` | Get per-device SWG override settings |
+| `umbrella_remove_swg_device_settings` | Revert device SWG to org default |
 
 ### Reports
 
@@ -192,6 +207,8 @@ npx @modelcontextprotocol/inspector cisco-umbrella-mcp
 | `umbrella_get_activity_dns` | DNS activity events |
 | `umbrella_get_activity_proxy` | Web proxy activity events |
 | `umbrella_get_activity_firewall` | Firewall activity events |
+| `umbrella_get_activity_intrusion` | IPS/intrusion detection events |
+| `umbrella_get_activity_amp` | AMP retrospective events (files reclassified as malicious) |
 | `umbrella_get_top_destinations` | Top destinations by request count |
 | `umbrella_get_top_identities` | Top identities by request count |
 | `umbrella_get_top_categories` | Top categories by request count |
@@ -199,8 +216,26 @@ npx @modelcontextprotocol/inspector cisco-umbrella-mcp
 | `umbrella_get_top_threat_types` | Top threat type categories |
 | `umbrella_get_summary` | Overall security summary |
 | `umbrella_get_total_requests` | Total request counts |
+| `umbrella_get_requests_by_hour` | Hourly request volume time-series |
+| `umbrella_get_requests_by_timerange` | Aggregate request counts for a period |
+| `umbrella_get_requests_by_hour_and_category` | Hourly request volume by category |
+| `umbrella_get_requests_by_timerange_and_category` | Aggregate request counts per category |
+| `umbrella_get_bandwidth_by_hour` | Hourly proxy bandwidth usage |
+| `umbrella_get_bandwidth_by_timerange` | Aggregate proxy bandwidth for a period |
 | `umbrella_list_categories` | List all category IDs and labels |
 | `umbrella_list_identities` | List all identity IDs and names |
+| `umbrella_get_api_usage_requests` | API request counts by endpoint |
+| `umbrella_get_api_usage_responses` | API response code distribution |
+| `umbrella_get_api_usage_by_key` | API request counts per key |
+| `umbrella_get_api_usage_summary` | High-level API usage summary |
+
+### App Discovery
+
+| Tool | Description |
+|------|-------------|
+| `umbrella_get_app_discovery_applications` | List discovered cloud applications with risk scores |
+| `umbrella_get_app_discovery_application_info` | Enriched info for discovered applications |
+| `umbrella_get_app_discovery_application_attributes` | Security/compliance attributes for a specific app |
 
 ### Admin
 
@@ -211,6 +246,11 @@ npx @modelcontextprotocol/inspector cisco-umbrella-mcp
 | `umbrella_list_roles` | List available roles |
 | `umbrella_list_api_keys` | List API keys (no secrets) |
 | `umbrella_get_api_key` | Get API key details |
+| `umbrella_create_api_key` | Create a new API key with specified scopes |
+| `umbrella_update_api_key` | Update API key name, description, or expiry |
+| `umbrella_delete_api_key` | Delete an API key permanently |
+| `umbrella_refresh_api_key` | Rotate API key credentials (new secret) |
+| `umbrella_rotate_s3_key` | Rotate managed S3 bucket credentials |
 
 ## Development
 
