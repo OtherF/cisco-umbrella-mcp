@@ -390,3 +390,26 @@ async def umbrella_delete_application_list(params: ApplicationListDeleteInput, c
         return json.dumps(data, indent=2) if data else "Application list deleted successfully."
     except Exception as e:
         return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_application_usage",
+    annotations={
+        "title": "Get Application Usage",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_application_usage(ctx: Context) -> str:
+    """Get usage statistics for applications across all application lists.
+
+    Shows which applications from the Umbrella catalog are in use within policies.
+    Added February 2026.
+    """
+    try:
+        data = await _get_client(ctx).get(SCOPE, "applications/usage")
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)

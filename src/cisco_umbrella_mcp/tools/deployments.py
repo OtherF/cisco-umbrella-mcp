@@ -54,6 +54,23 @@ class InternalDomainIdInput(BaseModel):
     internal_domain_id: int = Field(..., description="Internal domain ID")
 
 
+class TagIdInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    tag_id: int = Field(..., description="Tag ID")
+
+
+class TagDevicesInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    tag_id: int = Field(..., description="Tag ID")
+    device_ids: list[int] = Field(..., description="List of roaming computer device IDs", min_length=1)
+
+
+class SwgDeviceSettingsInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    device_ids: list[int] = Field(..., description="List of roaming computer device IDs to configure", min_length=1)
+    swg_enabled: Optional[bool] = Field(default=None, description="Enable (true) or disable (false) SWG for these devices")  # noqa: E501
+
+
 # ---------------------------------------------------------------------------
 # Network tools
 # ---------------------------------------------------------------------------
@@ -341,5 +358,201 @@ async def umbrella_list_policies(ctx: Context) -> str:
     try:
         data = await _get_client(ctx).get(SCOPE, "policies")
         return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+# ---------------------------------------------------------------------------
+# Roaming computers — OrgInfo
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    name="umbrella_get_roaming_org_info",
+    annotations={
+        "title": "Get Roaming Computers Org Info",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_roaming_org_info(ctx: Context) -> str:
+    """Get organization-level properties for roaming computers.
+
+    Returns org-wide configuration and status for the Umbrella roaming client deployment.
+    Added September 2024.
+    """
+    try:
+        data = await _get_client(ctx).get(SCOPE, "roamingcomputers/orgInfo")
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+# ---------------------------------------------------------------------------
+# Tags tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    name="umbrella_list_tags",
+    annotations={
+        "title": "List Roaming Computer Tags",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_list_tags(ctx: Context) -> str:
+    """List all tags used to group roaming computers.
+
+    Tags allow applying different policies to subsets of roaming computers.
+    Added January 2024.
+    """
+    try:
+        data = await _get_client(ctx).get(SCOPE, "tags")
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_list_tag_devices",
+    annotations={
+        "title": "List Devices with Tag",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_list_tag_devices(params: TagIdInput, ctx: Context) -> str:
+    """List all roaming computers associated with a specific tag."""
+    try:
+        data = await _get_client(ctx).get(SCOPE, f"tags/{params.tag_id}/devices")
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_add_tag_devices",
+    annotations={
+        "title": "Add Devices to Tag",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_add_tag_devices(params: TagDevicesInput, ctx: Context) -> str:
+    """Associate roaming computers with a tag."""
+    try:
+        data = await _get_client(ctx).post(
+            SCOPE, f"tags/{params.tag_id}/devices", json_data={"deviceIds": params.device_ids}
+        )
+        return json.dumps(data, indent=2) if data else "Devices added to tag successfully."
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_remove_tag_devices",
+    annotations={
+        "title": "Remove Devices from Tag",
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_remove_tag_devices(params: TagDevicesInput, ctx: Context) -> str:
+    """Remove roaming computers from a tag."""
+    try:
+        data = await _get_client(ctx).delete(
+            SCOPE, f"tags/{params.tag_id}/devices", json_data={"deviceIds": params.device_ids}
+        )
+        return json.dumps(data, indent=2) if data else "Devices removed from tag successfully."
+    except Exception as e:
+        return format_error(e)
+
+
+# ---------------------------------------------------------------------------
+# SWG Device Settings tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    name="umbrella_set_swg_device_settings",
+    annotations={
+        "title": "Set SWG Device Settings",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_set_swg_device_settings(params: SwgDeviceSettingsInput, ctx: Context) -> str:
+    """Enable or disable Secure Web Gateway (SWG) for specific roaming computers.
+
+    Overrides the organization default SWG setting for the given device IDs.
+    Added July 2024.
+    """
+    try:
+        body: dict = {"deviceIds": params.device_ids}
+        if params.swg_enabled is not None:
+            body["swgEnabled"] = params.swg_enabled
+        data = await _get_client(ctx).post(SCOPE, "deviceSettings/SWGEnabled/set", json_data=body)
+        return json.dumps(data, indent=2) if data else "SWG device settings applied successfully."
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_list_swg_device_settings",
+    annotations={
+        "title": "List SWG Device Settings",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_list_swg_device_settings(params: SwgDeviceSettingsInput, ctx: Context) -> str:
+    """Get the SWG override settings for specific roaming computers.
+
+    Returns per-device SWG enabled/disabled configuration. Added July 2024.
+    """
+    try:
+        data = await _get_client(ctx).post(
+            SCOPE, "deviceSettings/SWGEnabled/list", json_data={"deviceIds": params.device_ids}
+        )
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_remove_swg_device_settings",
+    annotations={
+        "title": "Remove SWG Device Settings",
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_remove_swg_device_settings(params: SwgDeviceSettingsInput, ctx: Context) -> str:
+    """Remove the SWG override for specific roaming computers, reverting to the org default.
+
+    Added July 2024.
+    """
+    try:
+        data = await _get_client(ctx).post(
+            SCOPE, "deviceSettings/SWGEnabled/remove", json_data={"deviceIds": params.device_ids}
+        )
+        return json.dumps(data, indent=2) if data else "SWG device settings removed successfully."
     except Exception as e:
         return format_error(e)

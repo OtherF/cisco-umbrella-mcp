@@ -70,6 +70,18 @@ class IdentitiesInput(BaseModel):
     offset: Optional[int] = Field(default=0, ge=0, description="Pagination offset")
 
 
+class ApiUsageInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    from_time: str = Field(
+        ..., description="Start time — relative (e.g. '-7days') or ISO 8601 (e.g. '2024-01-01T00:00:00Z')"
+    )
+    to_time: str = Field(
+        default="now", description="End time — relative (e.g. 'now') or ISO 8601. Defaults to 'now'."
+    )
+    limit: Optional[int] = Field(default=100, ge=1, le=500)
+    offset: Optional[int] = Field(default=0, ge=0)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -194,6 +206,31 @@ async def umbrella_get_activity_firewall(params: ActivityInput, ctx: Context) ->
     try:
         data = await _get_client(ctx).get(
             SCOPE, "activity/firewall", params=_activity_params(params)
+        )
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_activity_intrusion",
+    annotations={
+        "title": "Get Intrusion Activity",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_activity_intrusion(params: ActivityInput, ctx: Context) -> str:
+    """Get IPS/intrusion detection activity events within a time range.
+
+    Provide from_time (required) and to_time (optional, defaults to 'now').
+    Shows intrusion prevention system (IPS) events with threat details.
+    """
+    try:
+        data = await _get_client(ctx).get(
+            SCOPE, "activity/intrusion", params=_activity_params(params)
         )
         return json.dumps(data, indent=2)
     except Exception as e:
@@ -409,6 +446,100 @@ async def umbrella_list_identities(params: IdentitiesInput, ctx: Context) -> str
         data = await _get_client(ctx).get(
             SCOPE, "identities", params={"limit": params.limit, "offset": params.offset}
         )
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+# ---------------------------------------------------------------------------
+# API Usage tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    name="umbrella_get_api_usage_requests",
+    annotations={
+        "title": "Get API Usage — Requests",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_api_usage_requests(params: ApiUsageInput, ctx: Context) -> str:
+    """Get API request counts by endpoint for the organization in a time range.
+
+    Provides visibility into how the Umbrella API is being used — which endpoints
+    are called and how frequently. Added January 2024.
+    """
+    try:
+        data = await _get_client(ctx).get(SCOPE, "apiUsage/requests", params=_time_params(params))
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_api_usage_responses",
+    annotations={
+        "title": "Get API Usage — Responses",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_api_usage_responses(params: ApiUsageInput, ctx: Context) -> str:
+    """Get API response code distribution (2xx, 4xx, 5xx) for the organization in a time range.
+
+    Helps identify API errors, rate limiting (429), and auth failures (401/403). Added January 2024.
+    """
+    try:
+        data = await _get_client(ctx).get(SCOPE, "apiUsage/responses", params=_time_params(params))
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_api_usage_by_key",
+    annotations={
+        "title": "Get API Usage — By Key",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_api_usage_by_key(params: ApiUsageInput, ctx: Context) -> str:
+    """Get API request counts broken down per API key in a time range.
+
+    Useful for auditing which API keys are active and how heavily used. Added January 2024.
+    """
+    try:
+        data = await _get_client(ctx).get(SCOPE, "apiUsage/keys", params=_time_params(params))
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_api_usage_summary",
+    annotations={
+        "title": "Get API Usage — Summary",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_api_usage_summary(params: ApiUsageInput, ctx: Context) -> str:
+    """Get a high-level summary of API usage (total requests, errors, top keys) in a time range.
+
+    Added January 2024.
+    """
+    try:
+        data = await _get_client(ctx).get(SCOPE, "apiUsage/summary", params=_time_params(params))
         return json.dumps(data, indent=2)
     except Exception as e:
         return format_error(e)

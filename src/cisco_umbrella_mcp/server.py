@@ -60,6 +60,7 @@ mcp = FastMCP(
 # Import tool modules to register them with the server
 from cisco_umbrella_mcp.tools import (  # noqa: E402, F401
     admin,
+    appdiscovery,
     deployments,
     investigate,
     policies,
