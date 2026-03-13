@@ -19,8 +19,8 @@ TOKEN_REFRESH_BUFFER_SECONDS = 60
 class TokenManager:
     """Manages OAuth 2.0 access tokens with automatic refresh."""
 
-    api_key: str
-    api_secret: str
+    api_key: str = field(repr=False)
+    api_secret: str = field(repr=False)
     token_url: str = DEFAULT_TOKEN_URL
     org_id: str | None = None
     _access_token: str | None = field(default=None, init=False, repr=False)

@@ -50,6 +50,14 @@ class DomainsInput(BaseModel):
 class DomainVolumeInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     domain: str = Field(..., description="Domain name", min_length=1)
+
+    @field_validator("domain")
+    @classmethod
+    def clean_domain(cls, v: str) -> str:
+        v = v.strip().lower().rstrip(".")
+        if "/" in v or "\\" in v:
+            raise ValueError("domain must not contain path separators")
+        return v
     start: Optional[str] = Field(default=None, description="Start date in epoch ms or relative (-30days)")
     stop: Optional[str] = Field(default=None, description="End date in epoch ms or relative (now)")
     match: Optional[str] = Field(default=None, description="Match type: 'exact', 'component', or 'all'")
@@ -70,16 +78,39 @@ class IpInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     ip: str = Field(..., description="IP address to look up", min_length=1)
 
+    @field_validator("ip")
+    @classmethod
+    def validate_ip(cls, v: str) -> str:
+        if "/" in v or "\\" in v:
+            raise ValueError("ip must not contain path separators")
+        return v
+
 
 class WhoisInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     domain: str = Field(..., description="Domain name for WHOIS lookup", min_length=1)
+
+    @field_validator("domain")
+    @classmethod
+    def clean_domain(cls, v: str) -> str:
+        v = v.strip().lower().rstrip(".")
+        if "/" in v or "\\" in v:
+            raise ValueError("domain must not contain path separators")
+        return v
 
 
 class WhoisHistoryInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     domain: str = Field(..., description="Domain name for WHOIS history", min_length=1)
     limit: Optional[int] = Field(default=10, description="Max history records", ge=1, le=100)
+
+    @field_validator("domain")
+    @classmethod
+    def clean_domain(cls, v: str) -> str:
+        v = v.strip().lower().rstrip(".")
+        if "/" in v or "\\" in v:
+            raise ValueError("domain must not contain path separators")
+        return v
 
 
 class WhoisEmailInput(BaseModel):
@@ -88,10 +119,24 @@ class WhoisEmailInput(BaseModel):
     limit: Optional[int] = Field(default=20, ge=1, le=500)
     offset: Optional[int] = Field(default=0, ge=0)
 
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if "/" in v or "\\" in v:
+            raise ValueError("email must not contain path separators")
+        return v
+
 
 class WhoisNameserverInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     nameserver: str = Field(..., description="Nameserver hostname to search WHOIS records", min_length=1)
+
+    @field_validator("nameserver")
+    @classmethod
+    def validate_nameserver(cls, v: str) -> str:
+        if "/" in v or "\\" in v:
+            raise ValueError("nameserver must not contain path separators")
+        return v
 
 
 class PdnsInput(BaseModel):
@@ -112,6 +157,13 @@ class PdnsInput(BaseModel):
 class SampleInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     hash: str = Field(..., description="SHA-256 hash of the malware sample", min_length=64, max_length=64)
+
+    @field_validator("hash")
+    @classmethod
+    def validate_hex(cls, v: str) -> str:
+        if not all(c in "0123456789abcdefABCDEF" for c in v):
+            raise ValueError("hash must be a valid hex string")
+        return v.lower()
 
 
 class SamplesSearchInput(BaseModel):
