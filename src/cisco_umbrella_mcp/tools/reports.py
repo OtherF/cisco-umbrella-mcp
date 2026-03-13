@@ -237,6 +237,31 @@ async def umbrella_get_activity_intrusion(params: ActivityInput, ctx: Context) -
         return format_error(e)
 
 
+@mcp.tool(
+    name="umbrella_get_activity_amp",
+    annotations={
+        "title": "Get AMP Retrospective Activity",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_activity_amp(params: ActivityInput, ctx: Context) -> str:
+    """Get AMP (Advanced Malware Protection) retrospective activity events.
+
+    AMP retrospective events occur when a file initially classified as benign is
+    later reclassified as malicious. Provide from_time (required).
+    """
+    try:
+        data = await _get_client(ctx).get(
+            SCOPE, "activity/amp-retrospective", params=_activity_params(params)
+        )
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
 # ---------------------------------------------------------------------------
 # Aggregation / Top-N tools
 # ---------------------------------------------------------------------------
@@ -540,6 +565,157 @@ async def umbrella_get_api_usage_summary(params: ApiUsageInput, ctx: Context) ->
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "apiUsage/summary", params=_time_params(params))
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+# ---------------------------------------------------------------------------
+# Organization Requests tools (time-series request volume)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    name="umbrella_get_requests_by_hour",
+    annotations={
+        "title": "Get Requests by Hour",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_requests_by_hour(params: SummaryInput, ctx: Context) -> str:
+    """Get request volume bucketed by hour for the organization in a time range.
+
+    Returns hourly time-series data for allowed and blocked requests.
+    """
+    try:
+        data = await _get_client(ctx).get(
+            SCOPE, "organizations/requests/hour", params=_time_params(params)
+        )
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_requests_by_timerange",
+    annotations={
+        "title": "Get Requests by Time Range",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_requests_by_timerange(params: SummaryInput, ctx: Context) -> str:
+    """Get aggregate request counts for the organization in a time range.
+
+    Returns a single summary of allowed/blocked request totals for the period.
+    """
+    try:
+        data = await _get_client(ctx).get(
+            SCOPE, "organizations/requests/timerange", params=_time_params(params)
+        )
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_requests_by_hour_and_category",
+    annotations={
+        "title": "Get Requests by Hour and Category",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_requests_by_hour_and_category(params: SummaryInput, ctx: Context) -> str:
+    """Get hourly request volume broken down by content/security category.
+
+    Returns time-series data showing request counts per category per hour.
+    """
+    try:
+        data = await _get_client(ctx).get(
+            SCOPE, "organizations/requests/hour/categories", params=_time_params(params)
+        )
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_requests_by_timerange_and_category",
+    annotations={
+        "title": "Get Requests by Time Range and Category",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_requests_by_timerange_and_category(params: SummaryInput, ctx: Context) -> str:
+    """Get aggregate request counts per category for the organization in a time range.
+
+    Returns category-level totals for allowed/blocked requests over the period.
+    """
+    try:
+        data = await _get_client(ctx).get(
+            SCOPE, "organizations/requests/timerange/categories", params=_time_params(params)
+        )
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+# ---------------------------------------------------------------------------
+# Bandwidth tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    name="umbrella_get_bandwidth_by_hour",
+    annotations={
+        "title": "Get Bandwidth by Hour",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_bandwidth_by_hour(params: SummaryInput, ctx: Context) -> str:
+    """Get proxy bandwidth usage bucketed by hour for the organization.
+
+    Returns hourly time-series data for bytes sent/received through the SWG proxy.
+    """
+    try:
+        data = await _get_client(ctx).get(
+            SCOPE, "organizations/bandwidth/hour", params=_time_params(params)
+        )
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_bandwidth_by_timerange",
+    annotations={
+        "title": "Get Bandwidth by Time Range",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_bandwidth_by_timerange(params: SummaryInput, ctx: Context) -> str:
+    """Get aggregate proxy bandwidth usage (bytes in/out) for the organization in a time range."""
+    try:
+        data = await _get_client(ctx).get(
+            SCOPE, "organizations/bandwidth/timerange", params=_time_params(params)
+        )
         return json.dumps(data, indent=2)
     except Exception as e:
         return format_error(e)
