@@ -133,37 +133,15 @@ Windows and launches `wsl.exe` as a subprocess, which then starts the
 Python server inside your WSL environment over stdio — no ports or
 network configuration needed.
 
-**Using the installed entry point (`cisco-umbrella-mcp`):**
-
 ```json
 {
   "mcpServers": {
     "cisco-umbrella": {
       "command": "wsl.exe",
       "args": [
-        "--distribution", "Ubuntu",
-        "--exec", "/home/your-wsl-username/.local/bin/cisco-umbrella-mcp"
-      ],
-      "env": {
-        "API_KEY": "your-api-key",
-        "API_SECRET": "your-api-secret"
-      }
-    }
-  }
-}
-```
-
-**Using the Python module directly from the cloned source:**
-
-```json
-{
-  "mcpServers": {
-    "cisco-umbrella": {
-      "command": "wsl.exe",
-      "args": [
-        "--distribution", "Ubuntu",
-        "--exec", "/home/your-wsl-username/dev/cisco-umbrella-mcp/.venv/bin/python",
-        "-m", "cisco_umbrella_mcp"
+        "--",
+        "bash", "-c",
+        "cd /home/your-wsl-username/dev/cisco-umbrella-mcp && source .venv/bin/activate && exec python -m cisco_umbrella_mcp"
       ],
       "env": {
         "API_KEY": "your-api-key",
@@ -175,10 +153,11 @@ network configuration needed.
 ```
 
 > **Notes for WSL:**
-> - Replace `Ubuntu` with your actual WSL distribution name (check with `wsl.exe --list`).
-> - Use the full Linux path to the executable or Python binary — not a Windows path.
+> - Replace `/home/your-wsl-username/dev/cisco-umbrella-mcp` with the actual path to the cloned repo inside WSL.
+> - The `--` separates `wsl.exe` options from the command passed to the default WSL distribution. To target a specific distribution, replace `--` with `--distribution Ubuntu` (use `wsl.exe --list` to check the name).
+> - `source .venv/bin/activate` activates the virtual environment before launching the server.
+> - `exec` replaces the bash process with Python, keeping the process tree clean.
 > - The `env` block passes credentials directly to the process, so no `.env` file is needed in WSL.
-> - If you prefer to keep credentials in your WSL `.env` file instead, omit the `env` block and set `"cwd"` to the project directory: `"args": ["--distribution", "Ubuntu", "--exec", "...", "--cd", "/home/your-wsl-username/dev/cisco-umbrella-mcp"]` — `load_dotenv()` will then find the `.env` file automatically.
 
 ### Credential management
 
