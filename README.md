@@ -87,7 +87,11 @@ The server runs over **stdio** transport by default, which is what MCP clients (
 
 ### Claude Desktop integration
 
-Add to your Claude Desktop config (`claude_desktop_config.json`):
+The config file location depends on your OS:
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+#### Native (server installed on the same machine as Claude Desktop)
 
 ```json
 {
@@ -103,7 +107,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 }
 ```
 
-Or if running from source:
+Or if running directly from a cloned source directory:
 
 ```json
 {
@@ -120,6 +124,72 @@ Or if running from source:
   }
 }
 ```
+
+#### WSL (server running in WSL, Claude Desktop on Windows host)
+
+When the repository is cloned inside WSL, use `wsl.exe` to bridge from
+Windows Claude Desktop to the Linux process. Claude Desktop runs on
+Windows and launches `wsl.exe` as a subprocess, which then starts the
+Python server inside your WSL environment over stdio — no ports or
+network configuration needed.
+
+**Using the installed entry point (`cisco-umbrella-mcp`):**
+
+```json
+{
+  "mcpServers": {
+    "cisco-umbrella": {
+      "command": "wsl.exe",
+      "args": [
+        "--distribution", "Ubuntu",
+        "--exec", "/home/your-wsl-username/.local/bin/cisco-umbrella-mcp"
+      ],
+      "env": {
+        "API_KEY": "your-api-key",
+        "API_SECRET": "your-api-secret"
+      }
+    }
+  }
+}
+```
+
+**Using the Python module directly from the cloned source:**
+
+```json
+{
+  "mcpServers": {
+    "cisco-umbrella": {
+      "command": "wsl.exe",
+      "args": [
+        "--distribution", "Ubuntu",
+        "--exec", "/home/your-wsl-username/dev/cisco-umbrella-mcp/.venv/bin/python",
+        "-m", "cisco_umbrella_mcp"
+      ],
+      "env": {
+        "API_KEY": "your-api-key",
+        "API_SECRET": "your-api-secret"
+      }
+    }
+  }
+}
+```
+
+> **Notes for WSL:**
+> - Replace `Ubuntu` with your actual WSL distribution name (check with `wsl.exe --list`).
+> - Use the full Linux path to the executable or Python binary — not a Windows path.
+> - The `env` block passes credentials directly to the process, so no `.env` file is needed in WSL.
+> - If you prefer to keep credentials in your WSL `.env` file instead, omit the `env` block and set `"cwd"` to the project directory: `"args": ["--distribution", "Ubuntu", "--exec", "...", "--cd", "/home/your-wsl-username/dev/cisco-umbrella-mcp"]` — `load_dotenv()` will then find the `.env` file automatically.
+
+### Credential management
+
+You do not need to provide credentials in both the `.env` file and the
+MCP config — they serve the same purpose via different paths:
+
+- **`env` block in MCP config** — credentials are injected by Claude Desktop
+  when it launches the server process. The `.env` file is not read.
+- **`.env` file** — read by `load_dotenv()` at startup when the server's
+  working directory contains the file. Use this when running the server
+  manually or when `cwd` is set to the project directory.
 
 ### Testing with MCP Inspector
 
