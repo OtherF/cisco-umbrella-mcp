@@ -17,4 +17,5 @@ env/
 .DS_Store
 Thumbs.db
 *:Zone.Identifier
-.claude/settings.local.json
+.claude/
+claude.md
