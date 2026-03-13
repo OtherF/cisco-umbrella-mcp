@@ -61,7 +61,7 @@ class UmbrellaClient:
         url = f"{API_BASE_URL}/{scope}/{endpoint}"
         headers = await self._get_headers()
 
-        async with httpx.AsyncClient() as http:
+        async with httpx.AsyncClient(follow_redirects=True) as http:
             response = await http.request(
                 method,
                 url,

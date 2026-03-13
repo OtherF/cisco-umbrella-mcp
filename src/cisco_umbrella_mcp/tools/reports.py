@@ -59,16 +59,16 @@ class TimeRangeInput(BaseModel):
 
 class TopReportInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    from_ts: str = Field(..., description="Start time (ISO 8601 or epoch ms)", alias="from")
-    to_ts: Optional[str] = Field(default=None, description="End time", alias="to")
+    from_ts: str = Field(..., description="Start time (ISO 8601 or epoch ms, e.g. '-7days', '2024-01-01T00:00:00Z')", alias="from")
+    to_ts: str = Field(..., description="End time (ISO 8601 or epoch ms, e.g. 'now', '2024-01-07T00:00:00Z')", alias="to")
     limit: Optional[int] = Field(default=10, ge=1, le=100)
     offset: Optional[int] = Field(default=0, ge=0)
 
 
 class SummaryInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    from_ts: str = Field(..., description="Start time", alias="from")
-    to_ts: Optional[str] = Field(default=None, description="End time", alias="to")
+    from_ts: str = Field(..., description="Start time (ISO 8601 or epoch ms, e.g. '-7days', '2024-01-01T00:00:00Z')", alias="from")
+    to_ts: str = Field(..., description="End time (ISO 8601 or epoch ms, e.g. 'now', '2024-01-07T00:00:00Z')", alias="to")
 
 
 # ---------------------------------------------------------------------------
@@ -78,14 +78,18 @@ class SummaryInput(BaseModel):
 def _time_params(model: BaseModel) -> dict:
     """Extract common time-range query params from a model."""
     p: dict = {}
-    if hasattr(model, "from_ts") and model.from_ts:
-        p["from"] = model.from_ts
-    if hasattr(model, "to_ts") and model.to_ts:
-        p["to"] = model.to_ts
-    if hasattr(model, "limit") and model.limit is not None:
-        p["limit"] = model.limit
-    if hasattr(model, "offset") and model.offset is not None:
-        p["offset"] = model.offset
+    from_ts = getattr(model, "from_ts", None)
+    to_ts = getattr(model, "to_ts", None)
+    if from_ts:
+        p["from"] = from_ts
+    if to_ts:
+        p["to"] = to_ts
+    limit = getattr(model, "limit", None)
+    offset = getattr(model, "offset", None)
+    if limit is not None:
+        p["limit"] = limit
+    if offset is not None:
+        p["offset"] = offset
     return p
 
 
