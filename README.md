@@ -142,11 +142,7 @@ network configuration needed.
         "--",
         "bash", "-c",
         "cd /home/your-wsl-username/dev/cisco-umbrella-mcp && source .venv/bin/activate && exec python -m cisco_umbrella_mcp"
-      ],
-      "env": {
-        "API_KEY": "your-api-key",
-        "API_SECRET": "your-api-secret"
-      }
+      ]
     }
   }
 }
@@ -157,18 +153,15 @@ network configuration needed.
 > - The `--` separates `wsl.exe` options from the command passed to the default WSL distribution. To target a specific distribution, replace `--` with `--distribution Ubuntu` (use `wsl.exe --list` to check the name).
 > - `source .venv/bin/activate` activates the virtual environment before launching the server.
 > - `exec` replaces the bash process with Python, keeping the process tree clean.
-> - The `env` block passes credentials directly to the process, so no `.env` file is needed in WSL.
+> - **Credentials:** the `env` block does not work for WSL — Windows environment variables are not forwarded into the Linux environment. Place your credentials in a `.env` file inside the project directory in WSL instead (see [Configuration](#configuration) above). The server loads it automatically via `load_dotenv()`.
 
 ### Credential management
 
 You do not need to provide credentials in both the `.env` file and the
 MCP config — they serve the same purpose via different paths:
 
-- **`env` block in MCP config** — credentials are injected by Claude Desktop
-  when it launches the server process. The `.env` file is not read.
-- **`.env` file** — read by `load_dotenv()` at startup when the server's
-  working directory contains the file. Use this when running the server
-  manually or when `cwd` is set to the project directory.
+- **`env` block in MCP config** — credentials are injected by Claude Desktop when it launches the server process. Works for native installs (Windows/macOS). The `.env` file is not read in this case.
+- **`.env` file** — read by `load_dotenv()` at startup when the server's working directory contains the file. Required for WSL (Windows environment variables are not forwarded into the Linux environment), and also useful when running the server manually.
 
 ### Testing with MCP Inspector
 
