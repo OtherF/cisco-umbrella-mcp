@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from typing import Optional
 
 from mcp.server.fastmcp import Context
 from pydantic import BaseModel, ConfigDict, Field
 
-from cisco_umbrella_mcp.client import UmbrellaClient, format_error
+from cisco_umbrella_mcp.client import UmbrellaClient, compact_json, format_error
 from cisco_umbrella_mcp.server import AppContext, mcp
 
 SCOPE = "policies/v2"
@@ -26,7 +25,7 @@ def _get_client(ctx: Context) -> UmbrellaClient:
 class ListPaginationInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     page: Optional[int] = Field(default=1, description="Page number (starts at 1)", ge=1)
-    limit: Optional[int] = Field(default=100, description="Records per page (max 200)", ge=1, le=200)
+    limit: Optional[int] = Field(default=25, description="Records per page (max 200)", ge=1, le=200)
 
 
 class DestinationListIdInput(BaseModel):
@@ -56,7 +55,7 @@ class DestinationsGetInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     destination_list_id: int = Field(..., description="ID of the destination list")
     page: Optional[int] = Field(default=1, ge=1)
-    limit: Optional[int] = Field(default=100, ge=1, le=200)
+    limit: Optional[int] = Field(default=25, ge=1, le=200)
 
 
 class DestinationsAddInput(BaseModel):
@@ -125,7 +124,7 @@ async def umbrella_list_destination_lists(params: ListPaginationInput, ctx: Cont
         data = await _get_client(ctx).get(
             SCOPE, "destinationlists", params={"page": params.page, "limit": params.limit}
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -144,7 +143,7 @@ async def umbrella_get_destination_list(params: DestinationListIdInput, ctx: Con
     """Get details of a specific destination list by ID."""
     try:
         data = await _get_client(ctx).get(SCOPE, f"destinationlists/{params.destination_list_id}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -173,7 +172,7 @@ async def umbrella_create_destination_list(params: DestinationListCreateInput, c
         if params.destinations:
             body["destinations"] = [{"destination": d} for d in params.destinations]
         data = await _get_client(ctx).post(SCOPE, "destinationlists", json_data=body)
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -196,7 +195,7 @@ async def umbrella_update_destination_list(params: DestinationListUpdateInput, c
             f"destinationlists/{params.destination_list_id}",
             json_data={"name": params.name},
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -215,7 +214,7 @@ async def umbrella_delete_destination_list(params: DestinationListIdInput, ctx: 
     """Delete a destination list by ID. This action cannot be undone."""
     try:
         data = await _get_client(ctx).delete(SCOPE, f"destinationlists/{params.destination_list_id}")
-        return json.dumps(data, indent=2) if data else "Destination list deleted successfully."
+        return compact_json(data) if data else "Destination list deleted successfully."
     except Exception as e:
         return format_error(e)
 
@@ -242,7 +241,7 @@ async def umbrella_list_destinations(params: DestinationsGetInput, ctx: Context)
             f"destinationlists/{params.destination_list_id}/destinations",
             params={"page": params.page, "limit": params.limit},
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -271,7 +270,7 @@ async def umbrella_add_destinations(params: DestinationsAddInput, ctx: Context) 
             f"destinationlists/{params.destination_list_id}/destinations",
             json_data=items,
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -294,7 +293,7 @@ async def umbrella_remove_destinations(params: DestinationsRemoveInput, ctx: Con
             f"destinationlists/{params.destination_list_id}/destinations/remove",
             json_data=params.destination_ids,
         )
-        return json.dumps(data, indent=2) if data else "Destinations removed successfully."
+        return compact_json(data) if data else "Destinations removed successfully."
     except Exception as e:
         return format_error(e)
 
@@ -320,7 +319,7 @@ async def umbrella_list_application_lists(ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "applicationLists")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -342,7 +341,7 @@ async def umbrella_create_application_list(params: ApplicationListCreateInput, c
         if params.application_ids:
             body["applicationIds"] = params.application_ids
         data = await _get_client(ctx).post(SCOPE, "applicationLists", json_data=body)
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -368,7 +367,7 @@ async def umbrella_update_application_list(params: ApplicationListUpdateInput, c
         data = await _get_client(ctx).put(
             SCOPE, f"applicationLists/{params.application_list_id}", json_data=body
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -387,7 +386,7 @@ async def umbrella_delete_application_list(params: ApplicationListDeleteInput, c
     """Delete an application list by ID. This action cannot be undone."""
     try:
         data = await _get_client(ctx).delete(SCOPE, f"applicationLists/{params.application_list_id}")
-        return json.dumps(data, indent=2) if data else "Application list deleted successfully."
+        return compact_json(data) if data else "Application list deleted successfully."
     except Exception as e:
         return format_error(e)
 
@@ -410,6 +409,6 @@ async def umbrella_get_application_usage(ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "applications/usage")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)

@@ -50,13 +50,12 @@ class TokenManager:
         if self.org_id:
             headers["X-Umbrella-OrgId"] = self.org_id
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
             response = await client.post(
                 self.token_url,
                 auth=(self.api_key, self.api_secret),
                 headers=headers,
                 data={"grant_type": "client_credentials"},
-                timeout=30.0,
             )
             response.raise_for_status()
             data = response.json()

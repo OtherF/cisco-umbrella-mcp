@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from typing import Optional
 from urllib.parse import quote
 
 from mcp.server.fastmcp import Context
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from cisco_umbrella_mcp.client import UmbrellaClient, format_error
+from cisco_umbrella_mcp.client import UmbrellaClient, compact_json, format_error
 from cisco_umbrella_mcp.server import AppContext, mcp
 
 SCOPE = "investigate/v2"
@@ -197,7 +196,7 @@ async def umbrella_get_domain_status(params: DomainInput, ctx: Context) -> str:
         data = await _get_client(ctx).get(
             SCOPE, f"domains/categorization/{params.domain}", params={"showLabels": True}
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -224,7 +223,7 @@ async def umbrella_check_domains_bulk(params: DomainsInput, ctx: Context) -> str
             params={"showLabels": params.show_labels},
             json_data=params.domains,
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -255,7 +254,7 @@ async def umbrella_get_domain_volume(params: DomainVolumeInput, ctx: Context) ->
         data = await _get_client(ctx).get(
             SCOPE, f"domains/volume/{params.domain}", params=query or None
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -278,7 +277,7 @@ async def umbrella_get_domain_security(params: DomainInput, ctx: Context) -> str
     """
     try:
         data = await _get_client(ctx).get(SCOPE, f"security/name/{params.domain}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -297,7 +296,7 @@ async def umbrella_get_domain_risk_score(params: DomainInput, ctx: Context) -> s
     """Get the overall risk score for a domain (0-100, higher = riskier)."""
     try:
         data = await _get_client(ctx).get(SCOPE, f"domains/risk-score/{params.domain}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -320,7 +319,7 @@ async def umbrella_get_cooccurrences(params: DomainInput, ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, f"recommendations/name/{params.domain}.json")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -339,7 +338,7 @@ async def umbrella_get_related_domains(params: DomainInput, ctx: Context) -> str
     """Get domains related to the given domain based on shared infrastructure."""
     try:
         data = await _get_client(ctx).get(SCOPE, f"links/name/{params.domain}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -358,7 +357,7 @@ async def umbrella_get_subdomains(params: DomainInput, ctx: Context) -> str:
     """List known subdomains of a domain observed by Umbrella DNS resolvers."""
     try:
         data = await _get_client(ctx).get(SCOPE, f"subdomains/{params.domain}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -380,7 +379,7 @@ async def umbrella_get_domain_timeline(params: DomainInput, ctx: Context) -> str
     """
     try:
         data = await _get_client(ctx).get(SCOPE, f"timeline/{params.domain}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -411,7 +410,7 @@ async def umbrella_search_domains(params: DomainSearchInput, ctx: Context) -> st
         data = await _get_client(ctx).get(
             SCOPE, f"search/{quote(params.expression, safe='')}", params=query or None
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -439,7 +438,7 @@ async def umbrella_get_pdns_domain(params: PdnsInput, ctx: Context) -> str:
         if params.record_type:
             query["recordType"] = params.record_type
         data = await _get_client(ctx).get(SCOPE, f"pdns/name/{params.value}", params=query)
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -464,7 +463,7 @@ async def umbrella_get_pdns_ip(params: PdnsInput, ctx: Context) -> str:
         if params.record_type:
             query["recordType"] = params.record_type
         data = await _get_client(ctx).get(SCOPE, f"pdns/ip/{params.value}", params=query)
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -488,7 +487,7 @@ async def umbrella_get_whois(params: WhoisInput, ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, f"whois/{params.domain}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -512,7 +511,7 @@ async def umbrella_get_whois_history(params: WhoisHistoryInput, ctx: Context) ->
         data = await _get_client(ctx).get(
             SCOPE, f"whois/{params.domain}/history", params={"limit": params.limit}
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -535,7 +534,7 @@ async def umbrella_search_whois_by_email(params: WhoisEmailInput, ctx: Context) 
             f"whois/emails/{params.email}",
             params={"limit": params.limit, "offset": params.offset},
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -554,7 +553,7 @@ async def umbrella_search_whois_by_nameserver(params: WhoisNameserverInput, ctx:
     """Find domains using a specific nameserver via WHOIS records."""
     try:
         data = await _get_client(ctx).get(SCOPE, f"whois/nameservers/{params.nameserver}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -575,7 +574,7 @@ async def umbrella_get_asn_for_ip(params: IpInput, ctx: Context) -> str:
     """Get the autonomous system number (ASN) and BGP routing info for an IP address."""
     try:
         data = await _get_client(ctx).get(SCOPE, f"bgp_routes/ip/{params.ip}/as_for_ip.json")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -603,7 +602,7 @@ async def umbrella_get_samples(params: SamplesSearchInput, ctx: Context) -> str:
             f"samples/{quote(params.destination, safe='')}",
             params={"limit": params.limit, "offset": params.offset},
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -625,7 +624,7 @@ async def umbrella_get_sample_info(params: SampleInput, ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, f"sample/{params.hash}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -644,7 +643,7 @@ async def umbrella_get_sample_connections(params: SampleInput, ctx: Context) -> 
     """Get network connections made by a malware sample (domains and IPs it contacted)."""
     try:
         data = await _get_client(ctx).get(SCOPE, f"sample/{params.hash}/connections")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -663,6 +662,6 @@ async def umbrella_get_sample_behaviors(params: SampleInput, ctx: Context) -> st
     """Get behavioral analysis of a malware sample (file system, registry, process activity)."""
     try:
         data = await _get_client(ctx).get(SCOPE, f"sample/{params.hash}/behaviors")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)

@@ -81,6 +81,12 @@ class UmbrellaClient:
         if response.status_code == 204:
             return None
 
+        body = response.content
+        if len(body) > 2 * 1024 * 1024:
+            raise RuntimeError(
+                f"Response too large ({len(body):,} bytes). "
+                "Narrow your query or reduce the limit."
+            )
         return response.json()
 
     # Convenience methods
@@ -113,7 +119,26 @@ def format_error(e: Exception) -> str:
             503: "Umbrella service temporarily unavailable. Try again shortly.",
         }
         hint = messages.get(e.status_code, "")
-        return f"Error {e.status_code}: {e.detail}" + (f" — {hint}" if hint else "")
+        detail = e.detail[:500] + "…" if len(e.detail) > 500 else e.detail
+        return f"Error {e.status_code}: {detail}" + (f" — {hint}" if hint else "")
     if isinstance(e, httpx.TimeoutException):
         return "Error: Request timed out. Try again or use a smaller query."
     return f"Error: {type(e).__name__}: {e}"
+
+
+# ---------------------------------------------------------------------------
+# Output helpers
+# ---------------------------------------------------------------------------
+
+def _strip_empty(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: _strip_empty(v) for k, v in obj.items() if v is not None and v != "" and v != [] and v != {}}
+    if isinstance(obj, list):
+        return [_strip_empty(item) for item in obj]
+    return obj
+
+
+def compact_json(data: Any) -> str:
+    """Serialise data to compact JSON with null/empty fields stripped."""
+    import json
+    return json.dumps(_strip_empty(data), separators=(",", ":"))

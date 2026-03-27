@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from typing import Optional
 
 from mcp.server.fastmcp import Context
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from cisco_umbrella_mcp.client import UmbrellaClient, format_error
+from cisco_umbrella_mcp.client import UmbrellaClient, compact_json, format_error
 from cisco_umbrella_mcp.server import AppContext, mcp
 
 SCOPE = "reports/v2"
@@ -35,7 +34,7 @@ class ActivityInput(BaseModel):
     to_time: str = Field(
         default="now", description="End time — relative (e.g. 'now') or ISO 8601. Defaults to 'now'."
     )
-    limit: Optional[int] = Field(default=100, ge=1, le=500)
+    limit: Optional[int] = Field(default=25, ge=1, le=500)
     offset: Optional[int] = Field(default=0, ge=0)
     domains: Optional[str] = Field(default=None, description="Comma-separated domains to filter")
     ip: Optional[str] = Field(default=None, description="IP address to filter")
@@ -73,7 +72,7 @@ class SummaryInput(BaseModel):
 
 class IdentitiesInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    limit: Optional[int] = Field(default=100, ge=1, le=500, description="Max identities to return")
+    limit: Optional[int] = Field(default=25, ge=1, le=500, description="Max identities to return")
     offset: Optional[int] = Field(default=0, ge=0, description="Pagination offset")
 
 
@@ -85,7 +84,7 @@ class ApiUsageInput(BaseModel):
     to_time: str = Field(
         default="now", description="End time — relative (e.g. 'now') or ISO 8601. Defaults to 'now'."
     )
-    limit: Optional[int] = Field(default=100, ge=1, le=500)
+    limit: Optional[int] = Field(default=25, ge=1, le=500)
     offset: Optional[int] = Field(default=0, ge=0)
 
 
@@ -144,7 +143,7 @@ async def umbrella_get_activity(params: ActivityInput, ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "activity", params=_activity_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -167,7 +166,7 @@ async def umbrella_get_activity_dns(params: ActivityInput, ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "activity/dns", params=_activity_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -190,7 +189,7 @@ async def umbrella_get_activity_proxy(params: ActivityInput, ctx: Context) -> st
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "activity/proxy", params=_activity_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -214,7 +213,7 @@ async def umbrella_get_activity_firewall(params: ActivityInput, ctx: Context) ->
         data = await _get_client(ctx).get(
             SCOPE, "activity/firewall", params=_activity_params(params)
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -239,7 +238,7 @@ async def umbrella_get_activity_intrusion(params: ActivityInput, ctx: Context) -
         data = await _get_client(ctx).get(
             SCOPE, "activity/intrusion", params=_activity_params(params)
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -264,7 +263,7 @@ async def umbrella_get_activity_amp(params: ActivityInput, ctx: Context) -> str:
         data = await _get_client(ctx).get(
             SCOPE, "activity/amp-retrospective", params=_activity_params(params)
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -290,7 +289,7 @@ async def umbrella_get_top_destinations(params: TopReportInput, ctx: Context) ->
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "top-destinations", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -312,7 +311,7 @@ async def umbrella_get_top_identities(params: TopReportInput, ctx: Context) -> s
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "top-identities", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -334,7 +333,7 @@ async def umbrella_get_top_categories(params: TopReportInput, ctx: Context) -> s
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "top-categories", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -356,7 +355,7 @@ async def umbrella_get_top_threats(params: TopReportInput, ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "top-threats", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -378,7 +377,7 @@ async def umbrella_get_top_threat_types(params: TopReportInput, ctx: Context) ->
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "top-threat-types", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -405,7 +404,7 @@ async def umbrella_get_summary(params: SummaryInput, ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "summary", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -427,7 +426,7 @@ async def umbrella_get_total_requests(params: SummaryInput, ctx: Context) -> str
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "total-requests", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -453,7 +452,7 @@ async def umbrella_list_categories(ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "categories")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -478,7 +477,7 @@ async def umbrella_list_identities(params: IdentitiesInput, ctx: Context) -> str
         data = await _get_client(ctx).get(
             SCOPE, "identities", params={"limit": params.limit, "offset": params.offset}
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -506,7 +505,7 @@ async def umbrella_get_api_usage_requests(params: ApiUsageInput, ctx: Context) -
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "apiUsage/requests", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -528,7 +527,7 @@ async def umbrella_get_api_usage_responses(params: ApiUsageInput, ctx: Context) 
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "apiUsage/responses", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -550,7 +549,7 @@ async def umbrella_get_api_usage_by_key(params: ApiUsageInput, ctx: Context) -> 
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "apiUsage/keys", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -572,7 +571,7 @@ async def umbrella_get_api_usage_summary(params: ApiUsageInput, ctx: Context) ->
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "apiUsage/summary", params=_time_params(params))
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -601,7 +600,7 @@ async def umbrella_get_requests_by_hour(params: SummaryInput, ctx: Context) -> s
         data = await _get_client(ctx).get(
             SCOPE, "organizations/requests/hour", params=_time_params(params)
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -625,7 +624,7 @@ async def umbrella_get_requests_by_timerange(params: SummaryInput, ctx: Context)
         data = await _get_client(ctx).get(
             SCOPE, "organizations/requests/timerange", params=_time_params(params)
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -649,7 +648,7 @@ async def umbrella_get_requests_by_hour_and_category(params: SummaryInput, ctx: 
         data = await _get_client(ctx).get(
             SCOPE, "organizations/requests/hour/categories", params=_time_params(params)
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -673,7 +672,7 @@ async def umbrella_get_requests_by_timerange_and_category(params: SummaryInput, 
         data = await _get_client(ctx).get(
             SCOPE, "organizations/requests/timerange/categories", params=_time_params(params)
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -702,7 +701,7 @@ async def umbrella_get_bandwidth_by_hour(params: SummaryInput, ctx: Context) -> 
         data = await _get_client(ctx).get(
             SCOPE, "organizations/bandwidth/hour", params=_time_params(params)
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -723,6 +722,6 @@ async def umbrella_get_bandwidth_by_timerange(params: SummaryInput, ctx: Context
         data = await _get_client(ctx).get(
             SCOPE, "organizations/bandwidth/timerange", params=_time_params(params)
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)

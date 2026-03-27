@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from typing import Optional
 
 from mcp.server.fastmcp import Context
 from pydantic import BaseModel, ConfigDict, Field
 
-from cisco_umbrella_mcp.client import UmbrellaClient, format_error
+from cisco_umbrella_mcp.client import UmbrellaClient, compact_json, format_error
 from cisco_umbrella_mcp.server import AppContext, mcp
 
 SCOPE = "admin/v2"
@@ -36,7 +35,7 @@ class ApiKeyIdInput(BaseModel):
 class ApiKeyListInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     page: Optional[int] = Field(default=1, ge=1)
-    limit: Optional[int] = Field(default=100, ge=1, le=200)
+    limit: Optional[int] = Field(default=25, ge=1, le=200)
 
 
 class ApiKeyCreateInput(BaseModel):
@@ -86,7 +85,7 @@ async def umbrella_list_users(ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).get(SCOPE, "users")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -105,7 +104,7 @@ async def umbrella_get_user(params: UserIdInput, ctx: Context) -> str:
     """Get details of a specific Umbrella user by ID."""
     try:
         data = await _get_client(ctx).get(SCOPE, f"users/{params.user_id}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -124,7 +123,7 @@ async def umbrella_list_roles(ctx: Context) -> str:
     """List all available user roles in the Umbrella organization."""
     try:
         data = await _get_client(ctx).get(SCOPE, "roles")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -152,7 +151,7 @@ async def umbrella_list_api_keys(params: ApiKeyListInput, ctx: Context) -> str:
         data = await _get_client(ctx).get(
             SCOPE, "apiKeys", params={"page": params.page, "limit": params.limit}
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -171,7 +170,7 @@ async def umbrella_get_api_key(params: ApiKeyIdInput, ctx: Context) -> str:
     """Get details of a specific API key by ID. Secrets are never returned."""
     try:
         data = await _get_client(ctx).get(SCOPE, f"apiKeys/{params.api_key_id}")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -201,7 +200,7 @@ async def umbrella_create_api_key(params: ApiKeyCreateInput, ctx: Context) -> st
         if params.expire_at is not None:
             body["expireAt"] = params.expire_at
         data = await _get_client(ctx).post(SCOPE, "apiKeys", json_data=body)
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -229,7 +228,7 @@ async def umbrella_update_api_key(params: ApiKeyUpdateInput, ctx: Context) -> st
         if params.expire_at is not None:
             body["expireAt"] = params.expire_at
         data = await _get_client(ctx).patch(SCOPE, f"apiKeys/{params.api_key_id}", json_data=body)
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -248,7 +247,7 @@ async def umbrella_delete_api_key(params: ApiKeyIdInput, ctx: Context) -> str:
     """Delete an API key permanently. This immediately revokes all access using this key."""
     try:
         data = await _get_client(ctx).delete(SCOPE, f"apiKeys/{params.api_key_id}")
-        return json.dumps(data, indent=2) if data else "API key deleted successfully."
+        return compact_json(data) if data else "API key deleted successfully."
     except Exception as e:
         return format_error(e)
 
@@ -271,7 +270,7 @@ async def umbrella_refresh_api_key(params: ApiKeyIdInput, ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).post(SCOPE, f"apiKeys/{params.api_key_id}/refresh")
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -294,6 +293,6 @@ async def umbrella_rotate_s3_key(ctx: Context) -> str:
     """
     try:
         data = await _get_client(ctx).post(SCOPE, "iam/rotateKey")
-        return json.dumps(data, indent=2) if data else "S3 key rotated successfully."
+        return compact_json(data) if data else "S3 key rotated successfully."
     except Exception as e:
         return format_error(e)

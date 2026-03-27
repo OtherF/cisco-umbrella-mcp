@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from typing import Optional
 
 from mcp.server.fastmcp import Context
 from pydantic import BaseModel, ConfigDict, Field
 
-from cisco_umbrella_mcp.client import UmbrellaClient, format_error
+from cisco_umbrella_mcp.client import UmbrellaClient, compact_json, format_error
 from cisco_umbrella_mcp.server import AppContext, mcp
 
 SCOPE = "reports/v2"
@@ -34,7 +33,7 @@ class AppDiscoveryInput(BaseModel):
     to_time: str = Field(
         default="now", description="End time — relative (e.g. 'now') or ISO 8601. Defaults to 'now'."
     )
-    limit: Optional[int] = Field(default=100, ge=1, le=500)
+    limit: Optional[int] = Field(default=25, ge=1, le=500)
     offset: Optional[int] = Field(default=0, ge=0)
 
 
@@ -72,7 +71,7 @@ async def umbrella_get_app_discovery_applications(params: AppDiscoveryInput, ctx
             "offset": params.offset,
         }
         data = await _get_client(ctx).get(SCOPE, "appDiscovery/applications", params=query)
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -101,7 +100,7 @@ async def umbrella_get_app_discovery_application_info(params: AppDiscoveryInput,
             "offset": params.offset,
         }
         data = await _get_client(ctx).get(SCOPE, "appDiscovery/applications/info", params=query)
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)
 
@@ -126,6 +125,6 @@ async def umbrella_get_app_discovery_application_attributes(params: AppIdInput, 
         data = await _get_client(ctx).get(
             SCOPE, f"appDiscovery/applications/{params.application_id}/attributes"
         )
-        return json.dumps(data, indent=2)
+        return compact_json(data)
     except Exception as e:
         return format_error(e)

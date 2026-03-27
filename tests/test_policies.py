@@ -15,7 +15,7 @@ class TestPoliciesInputModels:
     def test_pagination_defaults(self) -> None:
         inp = ListPaginationInput()
         assert inp.page == 1
-        assert inp.limit == 100
+        assert inp.limit == 25
 
     def test_create_destination_list_requires_name(self) -> None:
         with pytest.raises(Exception):
