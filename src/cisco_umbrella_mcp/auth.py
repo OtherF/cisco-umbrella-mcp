@@ -23,6 +23,7 @@ class TokenManager:
     api_secret: str = field(repr=False)
     token_url: str = DEFAULT_TOKEN_URL
     org_id: str | None = None
+    http_client: httpx.AsyncClient | None = field(default=None, init=True, repr=False)
     _access_token: str | None = field(default=None, init=False, repr=False)
     _expires_at: float = field(default=0.0, init=False, repr=False)
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
@@ -50,15 +51,32 @@ class TokenManager:
         if self.org_id:
             headers["X-Umbrella-OrgId"] = self.org_id
 
-        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
-            response = await client.post(
+        if self.http_client is not None:
+            response = await self.http_client.post(
                 self.token_url,
                 auth=(self.api_key, self.api_secret),
                 headers=headers,
                 data={"grant_type": "client_credentials"},
             )
-            response.raise_for_status()
-            data = response.json()
+        else:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+                response = await client.post(
+                    self.token_url,
+                    auth=(self.api_key, self.api_secret),
+                    headers=headers,
+                    data={"grant_type": "client_credentials"},
+                )
 
-        self._access_token = data["access_token"]
+        response.raise_for_status()
+        try:
+            data = response.json()
+        except Exception as exc:
+            raise RuntimeError(
+                f"Token endpoint returned non-JSON response. Verify TOKEN_URL: {self.token_url}"
+            ) from exc
+
+        token = data.get("access_token")
+        if not token or not token.strip():
+            raise RuntimeError("Auth endpoint returned empty or missing access_token")
+        self._access_token = token
         self._expires_at = time.time() + data.get("expires_in", 3600)

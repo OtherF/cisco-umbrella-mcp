@@ -5,6 +5,7 @@ All tool modules use UmbrellaClient to make authenticated API requests.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import httpx
@@ -27,8 +28,9 @@ class UmbrellaAPIError(Exception):
 class UmbrellaClient:
     """Async HTTP client for the Cisco Umbrella REST API."""
 
-    def __init__(self, token_manager: TokenManager) -> None:
+    def __init__(self, token_manager: TokenManager, http_client: httpx.AsyncClient) -> None:
         self.token_manager = token_manager
+        self._http = http_client
 
     async def _get_headers(self) -> dict[str, str]:
         token = await self.token_manager.get_token()
@@ -49,11 +51,11 @@ class UmbrellaClient:
         """Make an authenticated request to the Umbrella API.
 
         Args:
-            method: HTTP method (GET, POST, PUT, PATCH, DELETE).
+            method: HTTP method (GET or POST for read-only queries).
             scope: API scope path (e.g. "investigate/v2", "policies/v2").
             endpoint: Path after the scope (e.g. "domains/categorization/example.com").
             params: Optional query parameters.
-            json_data: Optional JSON request body.
+            json_data: Optional JSON request body (for POST-as-query endpoints).
 
         Returns:
             Parsed JSON response.
@@ -61,15 +63,14 @@ class UmbrellaClient:
         url = f"{API_BASE_URL}/{scope}/{endpoint}"
         headers = await self._get_headers()
 
-        async with httpx.AsyncClient(follow_redirects=True) as http:
-            response = await http.request(
-                method,
-                url,
-                headers=headers,
-                params=params,
-                json=json_data,
-                timeout=REQUEST_TIMEOUT,
-            )
+        response = await self._http.request(
+            method,
+            url,
+            headers=headers,
+            params=params,
+            json=json_data,
+            timeout=REQUEST_TIMEOUT,
+        )
 
         if response.status_code >= 400:
             try:
@@ -83,27 +84,11 @@ class UmbrellaClient:
 
         body = response.content
         if len(body) > 2 * 1024 * 1024:
-            raise RuntimeError(
-                f"Response too large ({len(body):,} bytes). "
-                "Narrow your query or reduce the limit."
-            )
+            raise RuntimeError(f"Response too large ({len(body):,} bytes). Narrow your query or reduce the limit.")
         return response.json()
 
-    # Convenience methods
     async def get(self, scope: str, endpoint: str, **kwargs: Any) -> Any:
         return await self.request("GET", scope, endpoint, **kwargs)
-
-    async def post(self, scope: str, endpoint: str, **kwargs: Any) -> Any:
-        return await self.request("POST", scope, endpoint, **kwargs)
-
-    async def put(self, scope: str, endpoint: str, **kwargs: Any) -> Any:
-        return await self.request("PUT", scope, endpoint, **kwargs)
-
-    async def patch(self, scope: str, endpoint: str, **kwargs: Any) -> Any:
-        return await self.request("PATCH", scope, endpoint, **kwargs)
-
-    async def delete(self, scope: str, endpoint: str, **kwargs: Any) -> Any:
-        return await self.request("DELETE", scope, endpoint, **kwargs)
 
 
 def format_error(e: Exception) -> str:
@@ -130,6 +115,7 @@ def format_error(e: Exception) -> str:
 # Output helpers
 # ---------------------------------------------------------------------------
 
+
 def _strip_empty(obj: Any) -> Any:
     if isinstance(obj, dict):
         return {k: _strip_empty(v) for k, v in obj.items() if v is not None and v != "" and v != [] and v != {}}
@@ -140,5 +126,4 @@ def _strip_empty(obj: Any) -> Any:
 
 def compact_json(data: Any) -> str:
     """Serialise data to compact JSON with null/empty fields stripped."""
-    import json
     return json.dumps(_strip_empty(data), separators=(",", ":"))

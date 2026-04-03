@@ -2,159 +2,124 @@
 
 from __future__ import annotations
 
-from typing import Optional
 from urllib.parse import quote
 
 from mcp.server.fastmcp import Context
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import Field, field_validator
 
-from cisco_umbrella_mcp.client import UmbrellaClient, compact_json, format_error
-from cisco_umbrella_mcp.server import AppContext, mcp
+from cisco_umbrella_mcp.client import compact_json, format_error
+from cisco_umbrella_mcp.server import mcp
+from cisco_umbrella_mcp.tools import ToolInput, clean_domain_value, get_client, validate_no_path_separators
 
 SCOPE = "investigate/v2"
-
-
-def _get_client(ctx: Context) -> UmbrellaClient:
-    app: AppContext = ctx.request_context.lifespan_context
-    return app.client
 
 
 # ---------------------------------------------------------------------------
 # Input models
 # ---------------------------------------------------------------------------
 
-class DomainInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+
+class DomainInput(ToolInput):
     domain: str = Field(..., description="Domain name to look up (e.g. 'example.com')", min_length=1)
 
     @field_validator("domain")
     @classmethod
     def clean_domain(cls, v: str) -> str:
-        v = v.strip().lower().rstrip(".")
-        if "/" in v or "\\" in v:
-            raise ValueError("domain must not contain path separators")
-        return v
+        return clean_domain_value(v)
 
 
-class DomainsInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class DomainsInput(ToolInput):
     domains: list[str] = Field(
         ..., description="List of domain names to check (max 1000)", min_length=1, max_length=1000
     )
-    show_labels: bool = Field(
-        default=False, description="Return human-readable category labels instead of IDs"
-    )
+    show_labels: bool = Field(default=False, description="Return human-readable category labels instead of IDs")
 
 
-class DomainVolumeInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class DomainVolumeInput(ToolInput):
     domain: str = Field(..., description="Domain name", min_length=1)
 
     @field_validator("domain")
     @classmethod
     def clean_domain(cls, v: str) -> str:
-        v = v.strip().lower().rstrip(".")
-        if "/" in v or "\\" in v:
-            raise ValueError("domain must not contain path separators")
-        return v
-    start: Optional[str] = Field(default=None, description="Start date in epoch ms or relative (-30days)")
-    stop: Optional[str] = Field(default=None, description="End date in epoch ms or relative (now)")
-    match: Optional[str] = Field(default=None, description="Match type: 'exact', 'component', or 'all'")
+        return clean_domain_value(v)
+
+    start: str | None = Field(default=None, description="Start date in epoch ms or relative (-30days)")
+    stop: str | None = Field(default=None, description="End date in epoch ms or relative (now)")
+    match: str | None = Field(default=None, description="Match type: 'exact', 'component', or 'all'")
 
 
-class DomainSearchInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class DomainSearchInput(ToolInput):
     expression: str = Field(
-        ..., description="Search expression — regex pattern to match domain names (e.g. '.*malware.*')",
+        ...,
+        description="Search expression — regex pattern to match domain names (e.g. '.*malware.*')",
         min_length=1,
     )
-    start: Optional[str] = Field(default=None, description="Start time for the search window (epoch ms)")
-    limit: Optional[int] = Field(default=20, description="Maximum results to return", ge=1, le=1000)
-    include_category: Optional[bool] = Field(default=None, description="Include domain category info")
+    start: str | None = Field(default=None, description="Start time for the search window (epoch ms)")
+    limit: int | None = Field(default=20, description="Maximum results to return", ge=1, le=1000)
+    include_category: bool | None = Field(default=None, description="Include domain category info")
 
 
-class IpInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class IpInput(ToolInput):
     ip: str = Field(..., description="IP address to look up", min_length=1)
 
     @field_validator("ip")
     @classmethod
     def validate_ip(cls, v: str) -> str:
-        if "/" in v or "\\" in v:
-            raise ValueError("ip must not contain path separators")
-        return v
+        return validate_no_path_separators(v)
 
 
-class WhoisInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class WhoisInput(ToolInput):
     domain: str = Field(..., description="Domain name for WHOIS lookup", min_length=1)
 
     @field_validator("domain")
     @classmethod
     def clean_domain(cls, v: str) -> str:
-        v = v.strip().lower().rstrip(".")
-        if "/" in v or "\\" in v:
-            raise ValueError("domain must not contain path separators")
-        return v
+        return clean_domain_value(v)
 
 
-class WhoisHistoryInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class WhoisHistoryInput(ToolInput):
     domain: str = Field(..., description="Domain name for WHOIS history", min_length=1)
-    limit: Optional[int] = Field(default=10, description="Max history records", ge=1, le=100)
+    limit: int | None = Field(default=10, description="Max history records", ge=1, le=100)
 
     @field_validator("domain")
     @classmethod
     def clean_domain(cls, v: str) -> str:
-        v = v.strip().lower().rstrip(".")
-        if "/" in v or "\\" in v:
-            raise ValueError("domain must not contain path separators")
-        return v
+        return clean_domain_value(v)
 
 
-class WhoisEmailInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class WhoisEmailInput(ToolInput):
     email: str = Field(..., description="Email address to search WHOIS records", min_length=1)
-    limit: Optional[int] = Field(default=20, ge=1, le=500)
-    offset: Optional[int] = Field(default=0, ge=0)
+    limit: int | None = Field(default=20, ge=1, le=500)
+    offset: int | None = Field(default=0, ge=0)
 
     @field_validator("email")
     @classmethod
     def validate_email(cls, v: str) -> str:
-        if "/" in v or "\\" in v:
-            raise ValueError("email must not contain path separators")
-        return v
+        return validate_no_path_separators(v)
 
 
-class WhoisNameserverInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class WhoisNameserverInput(ToolInput):
     nameserver: str = Field(..., description="Nameserver hostname to search WHOIS records", min_length=1)
 
     @field_validator("nameserver")
     @classmethod
     def validate_nameserver(cls, v: str) -> str:
-        if "/" in v or "\\" in v:
-            raise ValueError("nameserver must not contain path separators")
-        return v
+        return validate_no_path_separators(v)
 
 
-class PdnsInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class PdnsInput(ToolInput):
     value: str = Field(..., description="Domain name or IP address for passive DNS lookup", min_length=1)
-    record_type: Optional[str] = Field(default=None, description="Filter by record type (A, AAAA, CNAME, etc.)")
-    limit: Optional[int] = Field(default=20, ge=1, le=500)
-    offset: Optional[int] = Field(default=0, ge=0)
+    record_type: str | None = Field(default=None, description="Filter by record type (A, AAAA, CNAME, etc.)")
+    limit: int | None = Field(default=20, ge=1, le=500)
+    offset: int | None = Field(default=0, ge=0)
 
     @field_validator("value")
     @classmethod
     def validate_value(cls, v: str) -> str:
-        if "/" in v or "\\" in v:
-            raise ValueError("value must be a domain name or IP address, not a URL path")
-        return v
+        return validate_no_path_separators(v)
 
 
-class SampleInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class SampleInput(ToolInput):
     hash: str = Field(..., description="SHA-256 hash of the malware sample", min_length=64, max_length=64)
 
     @field_validator("hash")
@@ -165,16 +130,16 @@ class SampleInput(BaseModel):
         return v.lower()
 
 
-class SamplesSearchInput(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+class SamplesSearchInput(ToolInput):
     destination: str = Field(..., description="Domain, IP, or URL to find related malware samples", min_length=1)
-    limit: Optional[int] = Field(default=20, ge=1, le=500)
-    offset: Optional[int] = Field(default=0, ge=0)
+    limit: int | None = Field(default=20, ge=1, le=500)
+    offset: int | None = Field(default=0, ge=0)
 
 
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool(
     name="umbrella_get_domain_status",
@@ -193,8 +158,10 @@ async def umbrella_get_domain_status(params: DomainInput, ctx: Context) -> str:
     and content category IDs. Use umbrella_check_domains_bulk for multiple domains.
     """
     try:
-        data = await _get_client(ctx).get(
-            SCOPE, f"domains/categorization/{params.domain}", params={"showLabels": True}
+        data = await get_client(ctx).get(
+            SCOPE,
+            f"domains/categorization/{quote(params.domain, safe='')}",
+            params={"showLabels": True},
         )
         return compact_json(data)
     except Exception as e:
@@ -217,7 +184,8 @@ async def umbrella_check_domains_bulk(params: DomainsInput, ctx: Context) -> str
     Returns per-domain status (-1=malicious, 0=undetermined, 1=safe) and categories.
     """
     try:
-        data = await _get_client(ctx).post(
+        data = await get_client(ctx).request(
+            "POST",
             SCOPE,
             "domains/categorization",
             params={"showLabels": params.show_labels},
@@ -251,9 +219,7 @@ async def umbrella_get_domain_volume(params: DomainVolumeInput, ctx: Context) ->
             query["stop"] = params.stop
         if params.match:
             query["match"] = params.match
-        data = await _get_client(ctx).get(
-            SCOPE, f"domains/volume/{params.domain}", params=query or None
-        )
+        data = await get_client(ctx).get(SCOPE, f"domains/volume/{quote(params.domain, safe='')}", params=query or None)
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -276,7 +242,7 @@ async def umbrella_get_domain_security(params: DomainInput, ctx: Context) -> str
     and other risk indicators.
     """
     try:
-        data = await _get_client(ctx).get(SCOPE, f"security/name/{params.domain}")
+        data = await get_client(ctx).get(SCOPE, f"security/name/{quote(params.domain, safe='')}")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -295,7 +261,7 @@ async def umbrella_get_domain_security(params: DomainInput, ctx: Context) -> str
 async def umbrella_get_domain_risk_score(params: DomainInput, ctx: Context) -> str:
     """Get the overall risk score for a domain (0-100, higher = riskier)."""
     try:
-        data = await _get_client(ctx).get(SCOPE, f"domains/risk-score/{params.domain}")
+        data = await get_client(ctx).get(SCOPE, f"domains/risk-score/{quote(params.domain, safe='')}")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -318,7 +284,7 @@ async def umbrella_get_cooccurrences(params: DomainInput, ctx: Context) -> str:
     Suspicious co-occurrences can indicate attack infrastructure.
     """
     try:
-        data = await _get_client(ctx).get(SCOPE, f"recommendations/name/{params.domain}.json")
+        data = await get_client(ctx).get(SCOPE, f"recommendations/name/{quote(params.domain, safe='')}.json")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -337,7 +303,7 @@ async def umbrella_get_cooccurrences(params: DomainInput, ctx: Context) -> str:
 async def umbrella_get_related_domains(params: DomainInput, ctx: Context) -> str:
     """Get domains related to the given domain based on shared infrastructure."""
     try:
-        data = await _get_client(ctx).get(SCOPE, f"links/name/{params.domain}")
+        data = await get_client(ctx).get(SCOPE, f"links/name/{quote(params.domain, safe='')}")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -356,7 +322,7 @@ async def umbrella_get_related_domains(params: DomainInput, ctx: Context) -> str
 async def umbrella_get_subdomains(params: DomainInput, ctx: Context) -> str:
     """List known subdomains of a domain observed by Umbrella DNS resolvers."""
     try:
-        data = await _get_client(ctx).get(SCOPE, f"subdomains/{params.domain}")
+        data = await get_client(ctx).get(SCOPE, f"subdomains/{quote(params.domain, safe='')}")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -378,7 +344,7 @@ async def umbrella_get_domain_timeline(params: DomainInput, ctx: Context) -> str
     Shows when security events (malware, phishing, etc.) were associated with the domain.
     """
     try:
-        data = await _get_client(ctx).get(SCOPE, f"timeline/{params.domain}")
+        data = await get_client(ctx).get(SCOPE, f"timeline/{quote(params.domain, safe='')}")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -407,15 +373,14 @@ async def umbrella_search_domains(params: DomainSearchInput, ctx: Context) -> st
             query["limit"] = params.limit
         if params.include_category is not None:
             query["includeCategory"] = params.include_category
-        data = await _get_client(ctx).get(
-            SCOPE, f"search/{quote(params.expression, safe='')}", params=query or None
-        )
+        data = await get_client(ctx).get(SCOPE, f"search/{quote(params.expression, safe='')}", params=query or None)
         return compact_json(data)
     except Exception as e:
         return format_error(e)
 
 
 # --- Passive DNS ---
+
 
 @mcp.tool(
     name="umbrella_get_pdns_domain",
@@ -437,7 +402,7 @@ async def umbrella_get_pdns_domain(params: PdnsInput, ctx: Context) -> str:
         query: dict = {"limit": params.limit, "offset": params.offset}
         if params.record_type:
             query["recordType"] = params.record_type
-        data = await _get_client(ctx).get(SCOPE, f"pdns/name/{params.value}", params=query)
+        data = await get_client(ctx).get(SCOPE, f"pdns/name/{quote(params.value, safe='')}", params=query)
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -462,13 +427,14 @@ async def umbrella_get_pdns_ip(params: PdnsInput, ctx: Context) -> str:
         query: dict = {"limit": params.limit, "offset": params.offset}
         if params.record_type:
             query["recordType"] = params.record_type
-        data = await _get_client(ctx).get(SCOPE, f"pdns/ip/{params.value}", params=query)
+        data = await get_client(ctx).get(SCOPE, f"pdns/ip/{quote(params.value, safe='')}", params=query)
         return compact_json(data)
     except Exception as e:
         return format_error(e)
 
 
 # --- WHOIS ---
+
 
 @mcp.tool(
     name="umbrella_get_whois",
@@ -486,7 +452,7 @@ async def umbrella_get_whois(params: WhoisInput, ctx: Context) -> str:
     Returns registrant, registrar, nameservers, creation/expiry dates, and contact info.
     """
     try:
-        data = await _get_client(ctx).get(SCOPE, f"whois/{params.domain}")
+        data = await get_client(ctx).get(SCOPE, f"whois/{quote(params.domain, safe='')}")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -508,8 +474,10 @@ async def umbrella_get_whois_history(params: WhoisHistoryInput, ctx: Context) ->
     Shows how registration details changed over time.
     """
     try:
-        data = await _get_client(ctx).get(
-            SCOPE, f"whois/{params.domain}/history", params={"limit": params.limit}
+        data = await get_client(ctx).get(
+            SCOPE,
+            f"whois/{quote(params.domain, safe='')}/history",
+            params={"limit": params.limit},
         )
         return compact_json(data)
     except Exception as e:
@@ -529,9 +497,9 @@ async def umbrella_get_whois_history(params: WhoisHistoryInput, ctx: Context) ->
 async def umbrella_search_whois_by_email(params: WhoisEmailInput, ctx: Context) -> str:
     """Find domains registered with a given email address via WHOIS records."""
     try:
-        data = await _get_client(ctx).get(
+        data = await get_client(ctx).get(
             SCOPE,
-            f"whois/emails/{params.email}",
+            f"whois/emails/{quote(params.email, safe='')}",
             params={"limit": params.limit, "offset": params.offset},
         )
         return compact_json(data)
@@ -552,13 +520,14 @@ async def umbrella_search_whois_by_email(params: WhoisEmailInput, ctx: Context) 
 async def umbrella_search_whois_by_nameserver(params: WhoisNameserverInput, ctx: Context) -> str:
     """Find domains using a specific nameserver via WHOIS records."""
     try:
-        data = await _get_client(ctx).get(SCOPE, f"whois/nameservers/{params.nameserver}")
+        data = await get_client(ctx).get(SCOPE, f"whois/nameservers/{quote(params.nameserver, safe='')}")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
 
 
 # --- ASN / BGP ---
+
 
 @mcp.tool(
     name="umbrella_get_asn_for_ip",
@@ -573,13 +542,14 @@ async def umbrella_search_whois_by_nameserver(params: WhoisNameserverInput, ctx:
 async def umbrella_get_asn_for_ip(params: IpInput, ctx: Context) -> str:
     """Get the autonomous system number (ASN) and BGP routing info for an IP address."""
     try:
-        data = await _get_client(ctx).get(SCOPE, f"bgp_routes/ip/{params.ip}/as_for_ip.json")
+        data = await get_client(ctx).get(SCOPE, f"bgp_routes/ip/{quote(params.ip, safe='')}/as_for_ip.json")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
 
 
 # --- Malware Samples ---
+
 
 @mcp.tool(
     name="umbrella_get_samples",
@@ -597,7 +567,7 @@ async def umbrella_get_samples(params: SamplesSearchInput, ctx: Context) -> str:
     Returns sample hashes, threat names, and metadata from Cisco Secure Malware Analytics.
     """
     try:
-        data = await _get_client(ctx).get(
+        data = await get_client(ctx).get(
             SCOPE,
             f"samples/{quote(params.destination, safe='')}",
             params={"limit": params.limit, "offset": params.offset},
@@ -623,7 +593,7 @@ async def umbrella_get_sample_info(params: SampleInput, ctx: Context) -> str:
     Returns file metadata, threat classification, and analysis results.
     """
     try:
-        data = await _get_client(ctx).get(SCOPE, f"sample/{params.hash}")
+        data = await get_client(ctx).get(SCOPE, f"sample/{params.hash}")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -642,7 +612,7 @@ async def umbrella_get_sample_info(params: SampleInput, ctx: Context) -> str:
 async def umbrella_get_sample_connections(params: SampleInput, ctx: Context) -> str:
     """Get network connections made by a malware sample (domains and IPs it contacted)."""
     try:
-        data = await _get_client(ctx).get(SCOPE, f"sample/{params.hash}/connections")
+        data = await get_client(ctx).get(SCOPE, f"sample/{params.hash}/connections")
         return compact_json(data)
     except Exception as e:
         return format_error(e)
@@ -661,7 +631,209 @@ async def umbrella_get_sample_connections(params: SampleInput, ctx: Context) -> 
 async def umbrella_get_sample_behaviors(params: SampleInput, ctx: Context) -> str:
     """Get behavioral analysis of a malware sample (file system, registry, process activity)."""
     try:
-        data = await _get_client(ctx).get(SCOPE, f"sample/{params.hash}/behaviors")
+        data = await get_client(ctx).get(SCOPE, f"sample/{params.hash}/behaviors")
+        return compact_json(data)
+    except Exception as e:
+        return format_error(e)
+
+
+# ---------------------------------------------------------------------------
+# New input models
+# ---------------------------------------------------------------------------
+
+
+class AsnInput(ToolInput):
+    asn: int = Field(..., description="Autonomous System Number")
+
+
+class WhoisSearchInput(ToolInput):
+    field: str = Field(
+        ..., description="WHOIS field to search (e.g. 'registrant_name', 'registrant_org')", min_length=1
+    )
+    regex: str = Field(..., description="Regex pattern to match", min_length=1)
+
+
+# ---------------------------------------------------------------------------
+# New tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    name="umbrella_get_asn_prefixes",
+    annotations={
+        "title": "Get IP Prefixes for ASN",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_asn_prefixes(params: AsnInput, ctx: Context) -> str:
+    """Get IP prefixes announced by an autonomous system (ASN)."""
+    try:
+        data = await get_client(ctx).get(SCOPE, f"bgp_routes/asn/{params.asn}/prefixes_for_asn.json")
+        return compact_json(data)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_pdns_raw",
+    annotations={
+        "title": "Get Raw Passive DNS Records",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_pdns_raw(params: PdnsInput, ctx: Context) -> str:
+    """Get raw passive DNS records for a domain or IP, including all record types."""
+    try:
+        query: dict = {"limit": params.limit, "offset": params.offset}
+        if params.record_type:
+            query["recordType"] = params.record_type
+        data = await get_client(ctx).get(SCOPE, f"pdns/raw/{quote(params.value, safe='')}", params=query)
+        return compact_json(data)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_pdns_timeline",
+    annotations={
+        "title": "Get Passive DNS Timeline",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_pdns_timeline(params: DomainInput, ctx: Context) -> str:
+    """Get passive DNS timeline showing when DNS records changed for a domain."""
+    try:
+        data = await get_client(ctx).get(SCOPE, f"pdns/timeline/{quote(params.domain, safe='')}")
+        return compact_json(data)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_sample_artifacts",
+    annotations={
+        "title": "Get Malware Sample Artifacts",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_sample_artifacts(params: SampleInput, ctx: Context) -> str:
+    """Get file artifacts (dropped files, network artifacts) from a malware sample."""
+    try:
+        data = await get_client(ctx).get(SCOPE, f"sample/{params.hash}/artifacts")
+        return compact_json(data)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_search_whois_advanced",
+    annotations={
+        "title": "Advanced WHOIS Field Search",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_search_whois_advanced(params: WhoisSearchInput, ctx: Context) -> str:
+    """Search WHOIS records by field name and regex pattern."""
+    try:
+        data = await get_client(ctx).get(
+            SCOPE,
+            f"whois/search/{quote(params.field, safe='')}/{quote(params.regex, safe='')}",
+        )
+        return compact_json(data)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_list_nameservers_whois",
+    annotations={
+        "title": "List Nameservers with WHOIS Counts",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_list_nameservers_whois(ctx: Context) -> str:
+    """List all nameservers with associated WHOIS domain counts."""
+    try:
+        data = await get_client(ctx).get(SCOPE, "whois/nameservers")
+        return compact_json(data)
+    except Exception as e:
+        return format_error(e)
+
+
+@mcp.tool(
+    name="umbrella_get_domain_tags",
+    annotations={
+        "title": "Get Domain Security Tags",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_domain_tags(params: DomainInput, ctx: Context) -> str:
+    """Get security tags (malware, phishing, etc.) associated with a domain."""
+    try:
+        data = await get_client(ctx).get(SCOPE, f"domains/{quote(params.domain, safe='')}/tags")
+        return compact_json(data)
+    except Exception as e:
+        return format_error(e)
+
+
+# ---------------------------------------------------------------------------
+# Popularity list
+# ---------------------------------------------------------------------------
+
+
+class TopDomainsInput(ToolInput):
+    limit: int | None = Field(
+        default=None,
+        ge=1,
+        description="Maximum number of domains to return. Omit to retrieve the full list (up to 1 million).",
+    )
+
+
+@mcp.tool(
+    name="umbrella_get_top_domains",
+    annotations={
+        "title": "Get Top Most Seen Domains",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def umbrella_get_top_domains(params: TopDomainsInput, ctx: Context) -> str:
+    """List the most queried domains across the Umbrella global network.
+
+    Powered by 180B+ daily DNS requests from 165+ countries. Useful as a
+    popularity baseline — domains on this list are broadly seen and generally
+    legitimate, helping analysts separate noise from genuine threats.
+
+    Requires the Investigate add-on license.
+    """
+    try:
+        query: dict = {}
+        if params.limit is not None:
+            query["limit"] = params.limit
+        data = await get_client(ctx).get(SCOPE, "topmillion", params=query or None)
         return compact_json(data)
     except Exception as e:
         return format_error(e)

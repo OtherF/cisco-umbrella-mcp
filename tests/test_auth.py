@@ -64,7 +64,8 @@ class TestTokenManager:
     @respx.mock
     async def test_org_id_header_sent(self) -> None:
         tm = TokenManager(
-            api_key="key", api_secret="secret",
+            api_key="key",
+            api_secret="secret",
             token_url="https://api.umbrella.com/auth/v2/token",
             org_id="child-org-123",
         )

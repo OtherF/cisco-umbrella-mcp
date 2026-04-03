@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -23,6 +23,7 @@ def token_manager() -> TokenManager:
 @pytest.fixture
 def mock_client(token_manager: TokenManager) -> UmbrellaClient:
     """Create an UmbrellaClient with a mocked request method."""
-    client = UmbrellaClient(token_manager)
+    http_client = MagicMock()
+    client = UmbrellaClient(token_manager, http_client)
     client.request = AsyncMock()  # type: ignore[method-assign]
     return client

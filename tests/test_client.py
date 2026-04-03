@@ -20,7 +20,8 @@ def tm() -> TokenManager:
 
 @pytest.fixture
 def client(tm: TokenManager) -> UmbrellaClient:
-    return UmbrellaClient(tm)
+    http = httpx.AsyncClient(follow_redirects=True)
+    return UmbrellaClient(tm, http)
 
 
 class TestUmbrellaClient:
@@ -34,31 +35,19 @@ class TestUmbrellaClient:
         assert "Bearer test-token" in route.calls[0].request.headers["Authorization"]
 
     @respx.mock
-    async def test_post_with_json_body(self, client: UmbrellaClient) -> None:
-        respx.post("https://api.umbrella.com/policies/v2/destinationlists").respond(
-            json={"id": 1}
+    async def test_post_query(self, client: UmbrellaClient) -> None:
+        respx.post("https://api.umbrella.com/investigate/v2/domains/categorization").respond(
+            json={"example.com": {"status": 1}}
         )
-        result = await client.post(
-            "policies/v2", "destinationlists", json_data={"name": "test"}
-        )
-        assert result == {"id": 1}
+        result = await client.request("POST", "investigate/v2", "domains/categorization", json_data=["example.com"])
+        assert result == {"example.com": {"status": 1}}
 
     @respx.mock
     async def test_api_error_raised(self, client: UmbrellaClient) -> None:
-        respx.get("https://api.umbrella.com/admin/v2/users").respond(
-            status_code=403, json={"error": "forbidden"}
-        )
+        respx.get("https://api.umbrella.com/admin/v2/users").respond(status_code=403, json={"error": "forbidden"})
         with pytest.raises(UmbrellaAPIError) as exc_info:
             await client.get("admin/v2", "users")
         assert exc_info.value.status_code == 403
-
-    @respx.mock
-    async def test_204_returns_none(self, client: UmbrellaClient) -> None:
-        respx.delete("https://api.umbrella.com/policies/v2/destinationlists/1").respond(
-            status_code=204
-        )
-        result = await client.delete("policies/v2", "destinationlists/1")
-        assert result is None
 
 
 class TestFormatError:

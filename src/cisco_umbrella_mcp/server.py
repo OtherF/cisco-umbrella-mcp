@@ -1,6 +1,6 @@
 """Cisco Umbrella MCP Server.
 
-FastMCP server that exposes Cisco Umbrella API operations as MCP tools.
+FastMCP server that exposes Cisco Umbrella API operations as read-only MCP tools.
 """
 
 from __future__ import annotations
@@ -10,7 +10,9 @@ import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
+import httpx
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
@@ -33,7 +35,7 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     api_key = os.environ.get("API_KEY", "")
     api_secret = os.environ.get("API_SECRET", "")
 
-    if not api_key or not api_secret:
+    if not api_key.strip() or not api_secret.strip():
         print(
             "Error: API_KEY and API_SECRET environment variables are required.\n"
             "Copy .env.example to .env and fill in your Umbrella API credentials.",
@@ -42,23 +44,26 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         sys.exit(1)
 
     token_url = os.environ.get("TOKEN_URL", "https://api.umbrella.com/auth/v2/token")
-    if not token_url.startswith("https://api.umbrella.com/"):
+    _parsed = urlparse(token_url)
+    if _parsed.scheme != "https" or _parsed.netloc != "api.umbrella.com":
         print(
-            f"Error: TOKEN_URL must start with 'https://api.umbrella.com/' (got: {token_url!r}).\n"
+            f"Error: TOKEN_URL must use https://api.umbrella.com (got: {token_url!r}).\n"
             "This server only communicates with the Cisco Umbrella API.",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    token_manager = TokenManager(
-        api_key=api_key,
-        api_secret=api_secret,
-        token_url=token_url,
-        org_id=os.environ.get("UMBRELLA_ORG_ID"),
-    )
-    client = UmbrellaClient(token_manager)
+    async with httpx.AsyncClient(follow_redirects=True) as http_client:
+        token_manager = TokenManager(
+            api_key=api_key,
+            api_secret=api_secret,
+            token_url=token_url,
+            org_id=os.environ.get("UMBRELLA_ORG_ID"),
+            http_client=http_client,
+        )
+        client = UmbrellaClient(token_manager, http_client)
 
-    yield AppContext(client=client)
+        yield AppContext(client=client)
 
 
 mcp = FastMCP(
