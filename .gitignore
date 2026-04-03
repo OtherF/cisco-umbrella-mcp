@@ -19,3 +19,4 @@ Thumbs.db
 *:Zone.Identifier
 .claude/
 claude.md
+.github/copilot-instructions.md
