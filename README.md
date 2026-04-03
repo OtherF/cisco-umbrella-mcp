@@ -121,7 +121,7 @@ The server is installed in WSL; the MCP client (Claude Desktop, VS Code) runs on
       "command": "wsl.exe",
       "args": [
         "--", "bash", "-c",
-        "API_KEY='your-api-key' API_SECRET='your-api-secret' /home/USER/dev/cisco-umbrella-mcp/.venv/bin/python -m cisco_umbrella_mcp"
+        "API_KEY='your-api-key' API_SECRET='your-api-secret' /path/to/cisco-umbrella-mcp/.venv/bin/python -m cisco_umbrella_mcp"
       ]
     }
   }
@@ -129,7 +129,7 @@ The server is installed in WSL; the MCP client (Claude Desktop, VS Code) runs on
 ```
 
 > **Notes:**
-> - Replace `/home/USER/dev/cisco-umbrella-mcp` with the actual WSL path.
+> - Replace `/path/to/cisco-umbrella-mcp` with the actual WSL path.
 > - Use `--distribution Ubuntu` instead of `--` to target a specific WSL distro (`wsl.exe --list` shows distro names).
 > - Credentials are passed as inline env vars in the bash command — not stored on disk.
 > - `exec` is not needed since Python replaces the shell process.
