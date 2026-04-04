@@ -6,9 +6,9 @@ An MCP (Model Context Protocol) server that exposes the [Cisco Umbrella](https:/
 
 **Read-only MCP tools across 6 API scopes:**
 
-- **Investigate** — Domain/IP/URL threat intelligence, risk scores, WHOIS, passive DNS, malware samples
+- **Investigate** — Domain/IP/URL threat intelligence, risk scores, WHOIS, passive DNS, malware samples, top domains
 - **Policies** — Query destination lists, application lists, application usage
-- **Deployments** — Networks, sites, tunnels, roaming computers, virtual appliances, tags, SWG device settings
+- **Deployments** — Networks, sites, tunnels, roaming computers, virtual appliances, internal networks, network devices, tags, SWG device settings
 - **Reports** — Activity logs, top-N rankings, security summaries, bandwidth, request time-series, API usage, MSP/provider reports
 - **Admin** — Users, roles, API key metadata
 - **App Discovery** — Cloud application discovery, risk assessment, compliance attributes
@@ -218,6 +218,7 @@ npx @modelcontextprotocol/inspector cisco-umbrella-mcp
 | `umbrella_get_sample_behaviors` | Behavioral analysis of a sample |
 | `umbrella_get_sample_artifacts` | File artifacts from a malware sample |
 | `umbrella_get_domain_tags` | Security tags for a domain |
+| `umbrella_get_top_domains` | Top most-queried domains across the Umbrella global network |
 
 ### Policies
 
@@ -250,6 +251,10 @@ npx @modelcontextprotocol/inspector cisco-umbrella-mcp
 | `umbrella_list_tags` | List roaming computer tags |
 | `umbrella_list_tag_devices` | List devices with a specific tag |
 | `umbrella_list_swg_device_settings` | Get per-device SWG override settings |
+| `umbrella_list_internal_networks` | List internal (RFC 1918) networks |
+| `umbrella_get_internal_network` | Get internal network details |
+| `umbrella_list_network_devices` | List network devices (hardware DNS routers) |
+| `umbrella_get_network_device` | Get network device details |
 
 ### Reports
 
