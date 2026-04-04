@@ -9,7 +9,7 @@ An MCP (Model Context Protocol) server that exposes the [Cisco Umbrella](https:/
 - **Investigate** — Domain/IP/URL threat intelligence, risk scores, WHOIS, passive DNS, malware samples
 - **Policies** — Query destination lists, application lists, application usage
 - **Deployments** — Networks, sites, tunnels, roaming computers, virtual appliances, tags, SWG device settings
-- **Reports** — Activity logs (DNS, proxy, firewall, intrusion, AMP), top destinations/threats/identities, bandwidth, request time-series, app discovery, API usage
+- **Reports** — Activity logs, top-N rankings, security summaries, bandwidth, request time-series, API usage, MSP/provider reports
 - **Admin** — Users, roles, API key metadata
 - **App Discovery** — Cloud application discovery, risk assessment, compliance attributes
 
@@ -253,56 +253,20 @@ npx @modelcontextprotocol/inspector cisco-umbrella-mcp
 
 ### Reports
 
-| Tool | Description |
-|------|-------------|
-| `umbrella_get_activity` | All activity events in a time range |
-| `umbrella_get_activity_dns` | DNS activity events |
-| `umbrella_get_activity_proxy` | Web proxy activity events |
-| `umbrella_get_activity_firewall` | Firewall activity events |
-| `umbrella_get_activity_intrusion` | IPS/intrusion detection events |
-| `umbrella_get_activity_amp` | AMP retrospective events (files reclassified as malicious) |
-| `umbrella_get_activity_ip` | IP-layer activity events |
-| `umbrella_get_top_destinations` | Top destinations by request count |
-| `umbrella_get_top_destinations_by_type` | Top destinations by traffic type |
-| `umbrella_get_top_identities` | Top identities by request count |
-| `umbrella_get_top_identities_by_type` | Top identities by traffic type |
-| `umbrella_get_top_categories` | Top categories by request count |
-| `umbrella_get_top_categories_by_type` | Top categories by traffic type |
-| `umbrella_get_top_threats` | Top threats detected |
-| `umbrella_get_top_threats_by_type` | Top threats by traffic type |
-| `umbrella_get_top_threat_types` | Top threat type categories |
-| `umbrella_get_top_threat_types_by_type` | Top threat types by traffic type |
-| `umbrella_get_summary` | Overall security summary |
-| `umbrella_get_summary_by_type` | Security summary by traffic type |
-| `umbrella_get_total_requests` | Total request counts |
-| `umbrella_get_total_requests_by_type` | Total requests by traffic type |
-| `umbrella_get_requests_by_hour` | Hourly request volume time-series |
-| `umbrella_get_requests_by_timerange` | Aggregate request counts for a period |
-| `umbrella_get_requests_by_hour_and_category` | Hourly request volume by category |
-| `umbrella_get_requests_by_timerange_and_category` | Aggregate request counts per category |
-| `umbrella_get_bandwidth_by_hour` | Hourly proxy bandwidth usage |
-| `umbrella_get_bandwidth_by_timerange` | Aggregate proxy bandwidth for a period |
-| `umbrella_get_top_urls` | Top URLs by request count |
-| `umbrella_get_top_ips` | Top external IPs |
-| `umbrella_get_top_internal_ips` | Top internal IPs |
-| `umbrella_get_top_files` | Top files by transfer count |
-| `umbrella_get_top_event_types` | Top event types |
-| `umbrella_get_top_dns_query_types` | Top DNS query types |
-| `umbrella_get_identity_distribution` | Request distribution by identity type |
-| `umbrella_list_categories` | List all category IDs and labels |
-| `umbrella_list_identities` | List all identity IDs and names |
-| `umbrella_get_api_usage_requests` | API request counts by endpoint |
-| `umbrella_get_api_usage_responses` | API response code distribution |
-| `umbrella_get_api_usage_by_key` | API request counts per key |
-| `umbrella_get_api_usage_summary` | High-level API usage summary |
-| `umbrella_get_provider_categories` | MSP: category breakdown by org |
-| `umbrella_get_provider_deployments` | MSP: deployment statistics |
-| `umbrella_get_provider_requests_by_org` | MSP: requests per org |
-| `umbrella_get_provider_requests_by_hour` | MSP: hourly request volume |
-| `umbrella_get_provider_requests_by_timerange` | MSP: aggregate requests |
-| `umbrella_get_provider_requests_by_category` | MSP: requests by category |
-| `umbrella_get_provider_requests_by_destination` | MSP: requests by destination |
-| `umbrella_get_provider_category_requests_by_org` | MSP: category requests by org |
+Each tool covers multiple API endpoints via a routing parameter. All endpoints from the previous individual tools are still accessible.
+
+| Tool | Routing parameter | What it covers |
+|------|-------------------|----------------|
+| `umbrella_get_activity` | `activity_type`: all, dns, proxy, firewall, intrusion, amp, ip | Activity event logs by traffic type |
+| `umbrella_get_top` | `metric`: destinations, identities, categories, threats, threat_types, urls, ips, internal_ips, files, event_types, dns_query_types — optional `traffic_type`: dns, proxy, firewall, ip | Top-N rankings, optionally filtered by traffic type |
+| `umbrella_get_summary` | `report`: summary, total_requests — optional `traffic_type`: dns, proxy, firewall, ip | Security summary and total request counts |
+| `umbrella_get_api_usage` | `metric`: requests, responses, keys, summary | API usage statistics |
+| `umbrella_get_request_volume` | `granularity`: hour, timerange — `by_category`: true/false | Organisation request volume time-series |
+| `umbrella_get_bandwidth` | `granularity`: hour, timerange | Proxy bandwidth usage time-series |
+| `umbrella_get_provider_report` | `report`: categories, deployments, requests_by_org, requests_by_hour, requests_by_timerange, requests_by_category, requests_by_destination, category_requests_by_org | MSP/provider cross-org reports |
+| `umbrella_list_categories` | — | All category IDs and labels |
+| `umbrella_list_identities` | — | All identity IDs and names |
+| `umbrella_get_identity_distribution` | — | Request distribution by identity type |
 
 ### App Discovery
 
